@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "frontLocataire",
+    "slug": "frontLocataire",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "frontlocataire",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#D1D9D9"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
