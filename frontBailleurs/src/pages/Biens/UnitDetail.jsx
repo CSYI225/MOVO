@@ -23,6 +23,7 @@ const UnitDetail = () => {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = React.useState(false);
   const [isTenantModalOpen, setIsTenantModalOpen] = React.useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = React.useState(false);
+  const [refresh, setRefresh] = React.useState(0);
   
   const property = properties.find(p => p.id === parseInt(id));
   const unit = property?.units?.find(u => u.id === parseInt(unitId));
@@ -204,14 +205,20 @@ const UnitDetail = () => {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         initialData={unit}
+        propertyId={property.id}
+        onSave={() => setRefresh(r => r + 1)}
       />
 
       <ConfirmationModal
         isOpen={isDeleteConfirmOpen}
         onClose={() => setIsDeleteConfirmOpen(false)}
         onConfirm={() => {
-          // Logic to delete unit
-          console.log("Suppression de l'unité:", unit.id);
+          if (property.units) {
+             const index = property.units.findIndex(u => u.id === unit.id);
+             if (index > -1) {
+               property.units.splice(index, 1);
+             }
+          }
           setIsDeleteConfirmOpen(false);
           navigate(`/biens/${property.id}`);
         }}

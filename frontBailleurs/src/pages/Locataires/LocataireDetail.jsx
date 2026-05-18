@@ -7,7 +7,7 @@ import {
   ExternalLink, MapPin, CheckCircle,
   AlertTriangle, Home, DollarSign
 } from 'lucide-react';
-import { tenants, properties, allPlatformUsers } from '../../data/mockData';
+import { tenants, properties, allPlatformUsers, reports } from '../../data/mockData';
 import ReportModal from '../../components/Modals/ReportModal';
 import ReportDetailModal from '../../components/Modals/ReportDetailModal';
 import './Locataires.css';
@@ -17,8 +17,11 @@ const LocataireDetail = () => {
   const navigate = useNavigate();
   const [isReportModalOpen, setIsReportModalOpen] = React.useState(false);
   const [isVacateModalOpen, setIsVacateModalOpen] = React.useState(false);
+  const [departureDate, setDepartureDate] = React.useState(new Date().toISOString().split('T')[0]);
   const [selectedReport, setSelectedReport] = React.useState(null);
   const [isDetailOpen, setIsDetailOpen] = React.useState(false);
+  const [isPendingVacate, setIsPendingVacate] = React.useState(false);
+  const [refresh, setRefresh] = React.useState(0);
   
   // Search in landlord's tenants first, then in the whole platform database
   const isMyTenant = tenants.some(t => t.id === parseInt(id));
@@ -35,6 +38,10 @@ const LocataireDetail = () => {
   
   // Strict check: must be my tenant AND currently residing in one of my properties
   const residesInMyProperty = isMyTenant && !!tenant.property && !!currentProperty;
+
+  const existingReport = reports.find(
+    r => r.tenantName === tenant?.name && r.propertyName === currentProperty?.name
+  );
 
   return (
     <div className="locataire-detail-page">
@@ -61,7 +68,12 @@ const LocataireDetail = () => {
 
       <div className="tenant-header-card">
         <div className="profile-main">
-          <div className="avatar-xl">{tenant.initials}</div>
+          <div className="avatar-xl" style={{ overflow: 'hidden', padding: 0, background: tenant.photo ? 'transparent' : undefined }}>
+            {tenant.photo
+              ? <img src={tenant.photo} alt={tenant.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+              : tenant.initials
+            }
+          </div>
           <div className="profile-meta">
             <h1>{tenant.name}</h1>
             {residesInMyProperty && (
@@ -70,7 +82,7 @@ const LocataireDetail = () => {
                 tenant.status === 'Refusé' ? 'status-refused-bg' : 'status-unverified-bg'
               }`}>
                 <ShieldCheck size={18} />
-                <span>Relation {tenant.status === 'Vérifié' ? 'Vérifiée' : tenant.status === 'Refusé' ? 'Refusée' : 'Non-vérifiée'}</span>
+                <span>Statut : {tenant.status}</span>
               </div>
             )}
           </div>
@@ -129,90 +141,6 @@ const LocataireDetail = () => {
               )}
             </div>
           </section>
-
-          <section className="card-section">
-            <h3><AlertCircle size={20} /> Rapports effectués</h3>
-            <div className="reports-list">
-              {tenant.reports?.map(report => (
-                <div key={report.id} className="report-card-mobile" style={{ position: 'relative', margin: '0 0 16px 0', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '16px', background: '#FFFFFF' }}>
-                  {report.status === 'Validé' && (
-                    <div className="status-badge-top" style={{ position: 'absolute', top: '-10px', right: '-10px', background: 'white', borderRadius: '50%', padding: '2px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                      <CheckCircle size={24} color="#4CAF50" fill="white" />
-                    </div>
-                  )}
-                  {report.status === 'Contesté' && (
-                    <div className="status-badge-top" style={{ position: 'absolute', top: '-10px', right: '-10px', background: 'white', borderRadius: '50%', padding: '2px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                      <AlertTriangle size={24} color="#FF5252" fill="white" />
-                    </div>
-                  )}
-
-                  <div className="report-card-header" style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
-                    <div className="report-avatar" style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#F3F4F6', color: '#003366', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2rem' }}>
-                      {report.author?.charAt(0) || tenant.initials?.charAt(0) || '?'}
-                    </div>
-                    <div className="report-user-info" style={{ flex: 1 }}>
-                      <h4 style={{ margin: 0, fontSize: '1rem', color: '#1F2937' }}>{report.author}</h4>
-                      <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#6B7280' }}>{report.location || currentProperty?.location || 'N/A'}</p>
-                    </div>
-                    <div className="report-date-stars" style={{ textAlign: 'right' }}>
-                      <span className="date-text" style={{ fontSize: '0.8rem', color: '#9CA3AF', display: 'block', marginBottom: '4px' }}>{report.date}</span>
-                      <div className="stars-row" style={{ display: 'flex', gap: '2px' }}>
-                        {[1, 2, 3, 4, 5].map(s => (
-                          <Star key={s} size={12} fill={report.rating >= s ? "#FFA000" : "none"} color="#FFA000" />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="report-section-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#9CA3AF', letterSpacing: '0.5px', marginBottom: '8px', fontWeight: '600' }}>Infos Bien</div>
-                  <div className="report-info-bien" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '8px', background: '#F9FAFB', padding: '10px', borderRadius: '8px', marginBottom: '16px' }}>
-                    <div className="info-item" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#4B5563' }}>
-                      <Home size={14} color="#003366" />
-                      <span>{report.propertyType || currentProperty?.type || 'N/A'}</span>
-                    </div>
-                    <div className="info-item" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#4B5563' }}>
-                      <MapPin size={14} color="#003366" />
-                      <span>{report.propertyName || tenant.property}</span>
-                    </div>
-                    <div className="info-item" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#4B5563' }}>
-                      <DollarSign size={14} color="#003366" />
-                      <span>{report.price || currentUnit?.price || currentProperty?.price || 'N/A'}</span>
-                    </div>
-                  </div>
-
-                  <div className="report-section-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#9CA3AF', letterSpacing: '0.5px', marginBottom: '8px', fontWeight: '600' }}>Commentaire</div>
-                  <div className="report-comment-box" style={{ background: '#F3F4F6', padding: '12px', borderRadius: '8px', fontSize: '0.9rem', color: '#374151', lineHeight: '1.5', marginBottom: '16px' }}>
-                    <p style={{ margin: 0 }}>{report.content || report.comment}</p>
-                  </div>
-
-                  {report.tenantResponse && (
-                     <div className="contestation-box-sm" style={{ borderLeft: '3px solid #FF5252', padding: '10px', background: '#FEF2F2', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                        <div className="contestation-header" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#DC2626', fontSize: '0.85rem', fontWeight: '500' }}>
-                          <AlertTriangle size={14} color="#FF5252" />
-                          <span>Ce rapport a été contesté par le locataire</span>
-                        </div>
-                     </div>
-                  )}
-
-                  <div className="report-card-actions">
-                    <button 
-                      className="btn-primary-full-width" 
-                      style={{ width: '100%', padding: '10px', background: '#003366', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '500', cursor: 'pointer' }} 
-                      onClick={() => {
-                        setSelectedReport(report);
-                        setIsDetailOpen(true);
-                      }}
-                    >
-                      Détails du rapport
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {(!tenant.reports || tenant.reports.length === 0) && (
-                <p className="empty-state">Aucun rapport n'a encore été effectué sur ce locataire.</p>
-              )}
-            </div>
-          </section>
         </div>
 
         <div className="detail-sidebar">
@@ -244,23 +172,107 @@ const LocataireDetail = () => {
               </div>
             )}
           </section>
-
         </div>
       </div>
       <ReportModal
         isOpen={isReportModalOpen}
-        onClose={() => setIsReportModalOpen(false)}
-        tenantName={tenant.name}
+        onClose={() => {
+          setIsReportModalOpen(false);
+          setIsPendingVacate(false);
+        }}
+        tenant={tenant}
+        propertyName={currentProperty?.name}
+        propertyType={currentProperty?.type}
+        propertyPrice={currentUnit?.price || currentProperty?.price}
+        reportToEdit={existingReport}
+        onSubmit={(reportData) => {
+          const isEdit = reports.some(r => r.id === reportData.id);
+          
+          if (!isEdit) {
+            if (!tenant.reports) tenant.reports = [];
+            tenant.reports.unshift(reportData);
+            reports.unshift(reportData);
+          } else {
+            // Already updated in place, but let's sync
+            const rIdx = reports.findIndex(r => r.id === reportData.id);
+            if (rIdx > -1) reports[rIdx] = reportData;
+            
+            if (!tenant.reports) tenant.reports = [];
+            const trIdx = tenant.reports.findIndex(r => r.id === reportData.id);
+            if (trIdx > -1) {
+              tenant.reports[trIdx] = reportData;
+            } else {
+              tenant.reports.unshift(reportData);
+            }
+          }
+
+          if (isPendingVacate && currentProperty) {
+            // Build history entry with departure date
+            if (!tenant.history) tenant.history = [];
+            
+            const startYear = tenant.occupancyDate ? tenant.occupancyDate : '2023-01-01';
+            const endYear = departureDate;
+            
+            tenant.history.unshift({
+              id: Date.now(),
+              property: currentProperty.name,
+              period: `${startYear} - ${endYear}`,
+              status: reportData.status === 'Validé' ? 'Régulier' : 'Litige',
+              propertyType: currentProperty.type,
+              location: currentProperty.location,
+              price: currentUnit?.price || currentProperty?.price,
+              arrivalDate: startYear,
+              departureDate: endYear,
+              relationStatus: reportData.relation || 'Terminée',
+              landlordName: 'Coulibaly Sékou'
+            });
+
+            // Remove tenant from property's currentTenants
+            if (currentProperty.currentTenants) {
+              const idx = currentProperty.currentTenants.indexOf(tenant.id);
+              if (idx > -1) currentProperty.currentTenants.splice(idx, 1);
+              currentProperty.occupants = currentProperty.currentTenants.length;
+              currentProperty.status = currentProperty.occupants === 0 ? 'Vacant' : 
+                (currentProperty.type === 'Immeuble' ? 'Partiellement occupé' : 'Occupé');
+            }
+            // Remove from unit if applicable
+            if (currentUnit) {
+              currentUnit.tenantId = null;
+            }
+            
+            // Clear tenant's property info
+            tenant.property = null;
+            tenant.unitNumber = null;
+            
+            setIsPendingVacate(false);
+            setRefresh(r => r + 1);
+          }
+        }}
       />
 
       {isVacateModalOpen && (
-        <div className="mini-modal-overlay">
+        <div className="modal-overlay">
           <div className="mini-modal">
-            <h3>Confirmer la libération ?</h3>
-            <p>Le locataire sera déplacé vers l'historique.</p>
+            <h3>Confirmer la libération</h3>
+            <p style={{ marginBottom: '16px' }}>Êtes-vous sûr de vouloir libérer {tenant.name} de ce logement ? Vous devrez remplir un rapport de sortie.</p>
+            
+            <div style={{ marginBottom: '20px', textAlign: 'left' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>Date de départ</label>
+              <input 
+                type="date" 
+                value={departureDate}
+                onChange={(e) => setDepartureDate(e.target.value)}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px' }}
+              />
+            </div>
+
             <div className="mini-modal-actions">
               <button className="btn-mini-cancel" onClick={() => setIsVacateModalOpen(false)}>Annuler</button>
-              <button className="btn-mini-confirm" onClick={() => { setIsVacateModalOpen(false); alert('Logement libéré ! (Simulation)'); }}>Confirmer</button>
+              <button className="btn-mini-confirm" onClick={() => { 
+                setIsVacateModalOpen(false);
+                setIsPendingVacate(true); // Mark that we're vacating
+                setIsReportModalOpen(true); // Force report before vacating
+              }}>Confirmer</button>
             </div>
           </div>
         </div>

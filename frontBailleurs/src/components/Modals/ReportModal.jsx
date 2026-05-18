@@ -4,14 +4,34 @@ import {
   Image as ImageIcon, Plus, Trash2, 
   AlertTriangle, ShieldCheck, Info
 } from 'lucide-react';
+import { reports } from '../../data/mockData';
 import './ReportModal.css';
 
-const ReportModal = ({ isOpen, onClose, tenantName, tenantEmail, tenantPhone }) => {
+const ReportModal = ({ isOpen, onClose, tenant, tenantName, tenantEmail, tenantPhone, propertyName, propertyType, propertyPrice, onSave, onSubmit, reportToEdit }) => {
   const [rating, setRating] = useState(0);
-  const [relation, setRelation] = useState('Confirmée');
+  // Default to the tenant's current status, or 'Non-vérifié'
+  const [relation, setRelation] = useState(tenant?.status || 'Non-vérifié');
   const [regularity, setRegularity] = useState('Toujours à temps');
   const [comment, setComment] = useState('');
   const [attachments, setAttachments] = useState([]);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (reportToEdit) {
+        setRating(reportToEdit.rating || 0);
+        setRelation(reportToEdit.relation || tenant?.status || 'Non-vérifié');
+        setRegularity(reportToEdit.regularity || 'Toujours à temps');
+        setComment(reportToEdit.comment || '');
+        setAttachments(reportToEdit.attachments || []);
+      } else {
+        setRating(0);
+        setRelation(tenant?.status || 'Non-vérifié');
+        setRegularity('Toujours à temps');
+        setComment('');
+        setAttachments([]);
+      }
+    }
+  }, [isOpen, tenant, reportToEdit]);
 
   if (!isOpen) return null;
 
@@ -31,8 +51,8 @@ const ReportModal = ({ isOpen, onClose, tenantName, tenantEmail, tenantPhone }) 
   };
 
   const getRelationClass = (val) => {
-    if (val === 'Confirmée') return 'confirmée';
-    if (val === 'Non confirmée') return 'non-confirmée';
+    if (val === 'Vérifié') return 'confirmée';
+    if (val === 'Non-vérifié') return 'non-confirmée';
     return 'réfusée';
   };
 
@@ -45,17 +65,57 @@ const ReportModal = ({ isOpen, onClose, tenantName, tenantEmail, tenantPhone }) 
         </div>
 
         <div className="report-modal-body-v2">
-          <form onSubmit={(e) => { e.preventDefault(); onClose(); }} className="report-form-v2">
+          <form onSubmit={(e) => { 
+            e.preventDefault(); 
+              const tName = tenant?.name || tenantName;
+              if (reportToEdit) {
+                // Edit existing
+                reportToEdit.rating = rating;
+                reportToEdit.relation = relation;
+                reportToEdit.regularity = regularity;
+                reportToEdit.comment = comment;
+                reportToEdit.attachments = attachments;
+                if (onSubmit) {
+                  onSubmit(reportToEdit);
+                }
+              } else {
+                // Create new
+                const newReport = {
+                  id: Date.now(),
+                  tenantName: tName,
+                  date: new Date().toLocaleDateString('fr-FR'),
+                  type: 'Général',
+                  status: 'Validé',
+                  rating,
+                  comment,
+                  relation,
+                  regularity,
+                  author: 'Coulibaly Sékou',
+                  propertyName: propertyName || tenant?.property || null,
+                  propertyType: propertyType || null,
+                  price: propertyPrice || null,
+                  location: null,
+                };
+                if (onSubmit) {
+                  onSubmit(newReport);
+                } else {
+                  reports.unshift(newReport);
+                }
+              }
+              alert(reportToEdit ? 'Rapport mis à jour avec succès !' : 'Rapport publié avec succès !');
+              if (onSave) onSave();
+              onClose(); 
+          }} className="report-form-v2">
             
             {/* Tenant Info Section */}
             <div className="section-label-v2">Locataire évalué</div>
             <div className="tenant-card-v2">
-               <div className="avatar-v2">{tenantName?.charAt(0) || '?'}</div>
+               <div className="avatar-v2">{(tenant?.name || tenantName)?.charAt(0) || '?'}</div>
                <div className="tenant-info-v2">
-                  <h3>{tenantName}</h3>
+                  <h3>{tenant?.name || tenantName}</h3>
                   <div className="tenant-contact-v2">
-                    <p>{tenantEmail || 'locataire@email.com'}</p>
-                    <p>{tenantPhone || '+225 01 02 03 04 05'}</p>
+                    <p>{tenant?.email || tenantEmail || 'locataire@email.com'}</p>
+                    <p>{tenant?.phone || tenantPhone || '+225 01 02 03 04 05'}</p>
                   </div>
                </div>
             </div>
@@ -81,7 +141,7 @@ const ReportModal = ({ isOpen, onClose, tenantName, tenantEmail, tenantPhone }) 
             {/* Relation Section - Read Only as it is automatic */}
             <div className="section-label-v2">Relation locataire-bailleur (Automatique)</div>
             <div className="chips-row-v2">
-               {['Confirmée', 'Non confirmée', 'Réfusée'].map(value => (
+               {['Vérifié', 'Non-vérifié', 'Refusé'].map(value => (
                  <div 
                    key={value}
                    className={`chip-v2 ${getRelationClass(value)} ${relation === value ? 'active' : ''}`}
@@ -143,7 +203,7 @@ const ReportModal = ({ isOpen, onClose, tenantName, tenantEmail, tenantPhone }) 
             <div className="form-footer-v2">
               <button type="button" className="btn-cancel-v2" onClick={onClose}>Annuler</button>
               <button type="submit" className="btn-submit-v2" disabled={!rating || !comment}>
-                Publier le rapport
+                {reportToEdit ? 'Mettre à jour et libérer' : 'Publier le rapport'}
               </button>
             </div>
           </form>

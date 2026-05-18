@@ -9,6 +9,7 @@ export const tenants = [
     property: 'Résidence Les Palmiers', 
     unitNumber: 'Apt 4B',
     initials: 'KM',
+    photo: 'https://randomuser.me/api/portraits/men/32.jpg',
     status: 'Vérifié',
     rating: 4.8,
     location: 'Abidjan, Cocody',
@@ -56,7 +57,7 @@ export const tenants = [
     ]
   },
   { id: 2, name: 'Soro Jean', email: 'soro.j@email.com', phone: '07 08 09 10 11', property: 'Villa Riviera', unitNumber: 'Villa n°12', initials: 'SJ', status: 'Non-vérifié', location: 'Riviera Palmeraie', rating: 4.5 },
-  { id: 3, name: 'Yao Amenan', email: 'yao.a@email.com', phone: '05 06 07 08 09', property: 'Résidence Les Palmiers', unitNumber: 'Apt 2A', initials: 'YA', status: 'Refusé', location: 'Abidjan, Cocody', rating: 4.2 },
+  { id: 3, name: 'Yao Amenan', email: 'yao.a@email.com', phone: '05 06 07 08 09', property: 'Résidence Les Palmiers', unitNumber: 'Apt 2A', initials: 'YA', photo: 'https://randomuser.me/api/portraits/women/44.jpg', status: 'Refusé', location: 'Abidjan, Cocody', rating: 4.2 },
   { 
     id: 4, 
     name: 'Konan Koffi', 
@@ -84,8 +85,8 @@ export const tenants = [
       }
     ]
   },
-  { id: 5, name: 'Diabaté Fatoumata', email: 'diabate.f@email.com', phone: '01 11 21 31 41', property: 'Résidence Les Palmiers', unitNumber: 'Studio 1', initials: 'DF', status: 'Vérifié', location: 'Abidjan, Cocody', rating: 4.9 },
-  { id: 6, name: 'Bakayoko Moussa', email: 'bakayoko.m@email.com', phone: '07 07 07 07 07', property: null, unitNumber: null, initials: 'BM', status: 'Vérifié', location: 'Bouaké', rating: 4.0 },
+  { id: 5, name: 'Diabaté Fatoumata', email: 'diabate.f@email.com', phone: '01 11 21 31 41', property: 'Résidence Les Palmiers', unitNumber: 'Studio 1', initials: 'DF', photo: 'https://randomuser.me/api/portraits/women/68.jpg', status: 'Vérifié', location: 'Abidjan, Cocody', rating: 4.9 },
+  { id: 6, name: 'Bakayoko Moussa', email: 'bakayoko.m@email.com', phone: '07 07 07 07 07', property: null, unitNumber: null, initials: 'BM', photo: 'https://randomuser.me/api/portraits/men/75.jpg', status: 'Vérifié', location: 'Bouaké', rating: 4.0 },
   { id: 7, name: 'Toure Alassane', email: 'toure.a@email.com', phone: '05 05 05 05 05', property: null, unitNumber: null, initials: 'AT', status: 'Non-vérifié', location: 'Yamoussoukro', rating: 3.5 },
 ];
 
@@ -97,7 +98,7 @@ export const properties = [
     type: 'Immeuble', 
     price: '2,500,000 FCFA / mois',
     status: 'Partiellement occupé', 
-    occupants: 8,
+    occupants: 3,
     icon: 'building',
     currentTenants: [1, 3, 5],
     units: [
@@ -149,9 +150,10 @@ export const properties = [
     location: 'Angré 7ème Tranche', 
     type: 'Studio', 
     price: '150,000 FCFA / mois', 
-    status: 'Occupé', 
+    status: 'Vacant', 
+    occupants: 0,
     icon: 'home', 
-    currentTenants: [4],
+    currentTenants: [],
     history: [
         { id: 505, tenantName: 'N\'guessan Julie', period: '15/05/2023 - 20/02/2024', tenantId: 5 }
     ]

@@ -1,15 +1,24 @@
 import React from 'react';
 import { X, Hash, DollarSign } from 'lucide-react';
+import { properties } from '../../data/mockData';
 
-const UnitModal = ({ isOpen, onClose, initialData = null }) => {
+const UnitModal = ({ isOpen, onClose, initialData = null, propertyId, onSave }) => {
   const [unitType, setUnitType] = React.useState('Studio');
+  const [number, setNumber] = React.useState('');
+  const [rooms, setRooms] = React.useState('');
+  const [price, setPrice] = React.useState('');
   
   React.useEffect(() => {
     if (initialData) {
-      // If it's not a studio, we treat it as an apartment for the dropdown
       setUnitType(initialData.type === 'Studio' ? 'Studio' : 'Appartement');
+      setNumber(initialData.number);
+      setRooms(initialData.type !== 'Studio' ? parseInt(initialData.type) : '');
+      setPrice(initialData.price);
     } else {
       setUnitType('Studio');
+      setNumber('');
+      setRooms('');
+      setPrice('');
     }
   }, [initialData, isOpen]);
 
@@ -25,7 +34,30 @@ const UnitModal = ({ isOpen, onClose, initialData = null }) => {
           <button className="btn-close-v2" onClick={onClose}><X size={20} /></button>
         </div>
         
-        <form className="modal-body-v2" onSubmit={(e) => { e.preventDefault(); onClose(); }}>
+        <form className="modal-body-v2" onSubmit={(e) => { 
+          e.preventDefault();
+          const property = properties.find(p => p.id === propertyId);
+          if (property && property.units) {
+             const actualType = unitType === 'Studio' ? 'Studio' : `${rooms} pièces`;
+             if (initialData) {
+               const index = property.units.findIndex(u => u.id === initialData.id);
+               if (index !== -1) {
+                 property.units[index] = { ...property.units[index], number, type: actualType, price };
+               }
+             } else {
+               property.units.push({
+                 id: Date.now(),
+                 number,
+                 type: actualType,
+                 price,
+                 tenantId: null,
+                 history: []
+               });
+             }
+          }
+          if (onSave) onSave();
+          onClose(); 
+        }}>
           <div className="form-sections-v2">
             <div className="form-grid-v2">
               <div className="form-group-v2">
@@ -35,7 +67,8 @@ const UnitModal = ({ isOpen, onClose, initialData = null }) => {
                   <input 
                     type="text" 
                     placeholder="ex: A101" 
-                    defaultValue={initialData?.number || ''}
+                    value={number}
+                    onChange={e => setNumber(e.target.value)}
                     required 
                   />
                 </div>
@@ -61,7 +94,8 @@ const UnitModal = ({ isOpen, onClose, initialData = null }) => {
                   <input 
                     type="number" 
                     placeholder="ex: 3" 
-                    defaultValue={initialData?.rooms || (initialData?.type ? parseInt(initialData.type) : '') || ''}
+                    value={rooms}
+                    onChange={e => setRooms(e.target.value)}
                     required 
                   />
                 </div>
@@ -74,7 +108,8 @@ const UnitModal = ({ isOpen, onClose, initialData = null }) => {
                   <input 
                     type="text" 
                     placeholder="ex: 75,000 FCFA" 
-                    defaultValue={initialData?.price || ''}
+                    value={price}
+                    onChange={e => setPrice(e.target.value)}
                     required 
                   />
                 </div>

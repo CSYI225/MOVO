@@ -22,6 +22,7 @@ const Rapports = () => {
   const [isTenantSelectOpen, setIsTenantSelectOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [activeTenant, setActiveTenant] = useState(null);
+  const [refresh, setRefresh] = useState(0);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('Tous');
@@ -34,7 +35,7 @@ const Rapports = () => {
       const matchesFilter = filterStatus === 'Tous' || r.status === filterStatus;
       return matchesSearch && matchesFilter;
     });
-  }, [searchTerm, filterStatus]);
+  }, [searchTerm, filterStatus, refresh]);
 
   const handleOpenDetail = (report) => {
     setSelectedReport(report);
@@ -181,7 +182,14 @@ const Rapports = () => {
         isOpen={isDetailOpen}
         report={selectedReport}
         onClose={() => setIsDetailOpen(false)}
-        onEdit={(id, comment) => console.log('Edit report', id, comment)}
+        onEdit={(id, comment) => {
+           console.log('Edit report', id, comment);
+           const idx = reports.findIndex(r => r.id === id);
+           if (idx > -1) {
+             reports[idx].comment = comment;
+             setRefresh(r => r + 1);
+           }
+        }}
       />
 
       <TenantSelectionModal
@@ -205,6 +213,7 @@ const Rapports = () => {
             setActiveTenant(null);
           }}
           tenantName={activeTenant.name}
+          onSave={() => setRefresh(r => r + 1)}
         />
       )}
     </div>

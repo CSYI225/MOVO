@@ -13,6 +13,7 @@ import UnitModal from '../../components/Modals/UnitModal';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal';
 import TenantSelectionModal from '../../components/Modals/TenantSelectionModal';
 import ManualTenantModal from '../../components/Modals/ManualTenantModal';
+import PropertySelectionModal from '../../components/Modals/PropertySelectionModal';
 import './Biens.css';
 
 const BienDetail = () => {
@@ -28,12 +29,16 @@ const BienDetail = () => {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = React.useState(false);
   const [isTenantModalOpen, setIsTenantModalOpen] = React.useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = React.useState(false);
+  const [isPropSelectionOpen, setIsPropSelectionOpen] = React.useState(false);
+  const [pendingTenant, setPendingTenant] = React.useState(null);
+  const [refresh, setRefresh] = React.useState(0);
   
   const property = properties.find(p => p.id === parseInt(id));
 
   if (!property) return <div className="p-6">Bien non trouvé.</div>;
 
   const currentTenantsData = tenants.filter(t => property.currentTenants?.includes(t.id));
+  const occupiedCount = property.units ? property.units.filter(u => u.tenantId !== null && u.tenantId !== undefined).length : currentTenantsData.length;
   
   const historyToDisplay = property?.type === 'Immeuble' && property.units 
     ? property.units.flatMap(u => u.history || [])
@@ -313,19 +318,24 @@ const BienDetail = () => {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         initialData={property}
+        onSave={() => setRefresh(r => r + 1)}
       />
 
       <UnitModal
         isOpen={isUnitModalOpen}
         onClose={() => setIsUnitModalOpen(false)}
+        propertyId={property.id}
+        onSave={() => setRefresh(r => r + 1)}
       />
 
       <ConfirmationModal
         isOpen={isDeleteConfirmOpen}
         onClose={() => setIsDeleteConfirmOpen(false)}
         onConfirm={() => {
-          // Logic to delete property
-          console.log("Suppression du bien:", property.id);
+          const index = properties.findIndex(p => p.id === property.id);
+          if (index > -1) {
+            properties.splice(index, 1);
+          }
           setIsDeleteConfirmOpen(false);
           navigate('/biens');
         }}
@@ -339,10 +349,28 @@ const BienDetail = () => {
           setIsTenantModalOpen(false);
           setIsManualModalOpen(true);
         }}
-        onSelect={(tenant) => {
-          console.log("Locataire sélectionné pour assignation:", tenant);
+        onSelect={(user) => {
           setIsTenantModalOpen(false);
-          // Logic to assign tenant to property
+          if (property.type === 'Immeuble') {
+            setPendingTenant(user);
+            setIsPropSelectionOpen(true);
+          } else {
+            // Assign directly if not Immeuble
+            if (!property.currentTenants) property.currentTenants = [];
+            if (!property.currentTenants.includes(user.id)) property.currentTenants.push(user.id);
+            const existingIdx = tenants.findIndex(t => t.id === user.id);
+            if (existingIdx === -1) {
+              tenants.push({ ...user, id: user.id || Date.now(), property: property.name, unitNumber: null, status: 'Non-vérifié', occupancyDate: new Date().toISOString().split('T')[0] });
+            } else {
+              tenants[existingIdx].property = property.name;
+              tenants[existingIdx].unitNumber = null;
+              tenants[existingIdx].occupancyDate = new Date().toISOString().split('T')[0];
+            }
+            property.occupants = property.currentTenants.length;
+            property.status = 'Occupé';
+            setRefresh(r => r + 1);
+            alert(`Locataire ${user.name} assigné avec succès !`);
+          }
         }}
         title="Assigner un locataire au bien"
       />
@@ -350,6 +378,67 @@ const BienDetail = () => {
       <ManualTenantModal
         isOpen={isManualModalOpen}
         onClose={() => setIsManualModalOpen(false)}
+        fixedPropertyId={property.id}
+        onSave={(data) => {
+          const newTenant = {
+            id: Date.now(),
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
+            photo: data.photo || null,
+            status: 'Non-vérifié',
+            property: property.name,
+            unitNumber: data.unit ? data.unit.number : null,
+            occupancyDate: data.occupancyDate || new Date().toISOString().split('T')[0],
+            initials: data.name.split(' ').map(n => n[0]).join('')
+          };
+          tenants.push(newTenant);
+          if (!property.currentTenants) property.currentTenants = [];
+          property.currentTenants.push(newTenant.id);
+          property.occupants = property.currentTenants.length;
+          property.status = property.type === 'Immeuble' ? 'Partiellement occupé' : 'Occupé';
+          
+          if (data.unit && property.units) {
+            const uIdx = property.units.findIndex(u => u.id === data.unit.id);
+            if (uIdx > -1) property.units[uIdx].tenantId = newTenant.id;
+          }
+          
+          setIsManualModalOpen(false);
+          setRefresh(r => r + 1);
+          alert(`Nouveau locataire ${data.name} créé et assigné !`);
+        }}
+      />
+
+      <PropertySelectionModal
+        isOpen={isPropSelectionOpen}
+        onClose={() => { setIsPropSelectionOpen(false); setPendingTenant(null); }}
+        tenantName={pendingTenant?.name}
+        fixedPropertyId={property.id}
+        onConfirm={(selProp, selUnit, occupancyDate) => {
+          if (!property.currentTenants) property.currentTenants = [];
+          if (!property.currentTenants.includes(pendingTenant.id)) property.currentTenants.push(pendingTenant.id);
+          
+          const existingIdx = tenants.findIndex(t => t.id === pendingTenant.id);
+          if (existingIdx === -1) {
+            tenants.push({ ...pendingTenant, id: pendingTenant.id || Date.now(), property: property.name, unitNumber: selUnit?.number, status: 'Non-vérifié', occupancyDate });
+          } else {
+            tenants[existingIdx].property = property.name;
+            tenants[existingIdx].unitNumber = selUnit?.number;
+            tenants[existingIdx].occupancyDate = occupancyDate;
+          }
+
+          if (selUnit && property.units) {
+            const uIdx = property.units.findIndex(u => u.id === selUnit.id);
+            if (uIdx > -1) property.units[uIdx].tenantId = pendingTenant.id || tenants[tenants.length - 1].id;
+          }
+
+          property.occupants = property.currentTenants.length;
+          property.status = 'Partiellement occupé';
+          setIsPropSelectionOpen(false);
+          setPendingTenant(null);
+          setRefresh(r => r + 1);
+          alert(`Locataire ${pendingTenant.name} assigné à l'unité ${selUnit?.number} avec succès !`);
+        }}
       />
     </div>
   );

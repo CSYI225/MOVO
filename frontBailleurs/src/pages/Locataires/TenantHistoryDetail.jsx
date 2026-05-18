@@ -6,11 +6,14 @@ import {
   Calendar, CheckCircle
 } from 'lucide-react';
 import { tenants, reports, properties } from '../../data/mockData';
+import ReportDetailModal from '../../components/Modals/ReportDetailModal';
 import './Locataires.css';
 
 const TenantHistoryDetail = () => {
   const { id, historyId } = useParams();
   const navigate = useNavigate();
+  const [isDetailOpen, setIsDetailOpen] = React.useState(false);
+  const [localReport, setLocalReport] = React.useState(null);
   
   const tenant = tenants.find(t => t.id === parseInt(id));
   const historyEntry = tenant?.history?.find(h => h.id === parseInt(historyId));
@@ -18,6 +21,12 @@ const TenantHistoryDetail = () => {
   // Find report for this history entry (simulation)
   // In a real app, we would match by property and tenant
   const report = reports.find(r => r.tenantName === tenant?.name && r.propertyName === historyEntry?.property);
+
+  React.useEffect(() => {
+    if (report) {
+      setLocalReport(report);
+    }
+  }, [report]);
   
   // Mock landlord info (simulation)
   const landlord = {
@@ -83,46 +92,71 @@ const TenantHistoryDetail = () => {
           <section className="card-section">
             <h3><FileText size={20} /> Rapport du propriétaire</h3>
             {report ? (
-              <div className="report-detail-view">
-                <div className="report-header-static">
-                  <div className="rating-row">
-                    {[1, 2, 3, 4, 5].map(s => (
-                      <Star key={s} size={20} fill={report.rating >= s ? "#FFA000" : "none"} color="#FFA000" />
-                    ))}
-                    <span className="rating-text">{report.rating} / 5</span>
+              <div className="report-card-mobile" style={{ margin: 0, width: '100%' }}>
+                {report.status === 'Validé' && (
+                  <div className="status-badge-top">
+                    <CheckCircle size={24} color="#4CAF50" fill="white" />
                   </div>
-                  <span className={`status-tag ${report.status?.toLowerCase()}`}>{report.status}</span>
-                </div>
-                
-                <div className="report-body-static">
-                  <div className="info-item full-width mt-4">
-                    <label>Commentaire du bailleur</label>
-                    <div className="comment-box">
-                      <p>{report.comment}</p>
-                    </div>
+                )}
+                {report.status === 'Contesté' && (
+                  <div className="status-badge-top">
+                    <AlertTriangle size={24} color="#FF5252" fill="white" />
                   </div>
-                  
-                  <div className="indicators-row mt-4">
-                    <div className="indicator">
-                      <label>Type</label>
-                      <span className="value">{report.type}</span>
-                    </div>
-                    <div className="indicator">
-                      <label>Régularité</label>
-                      <span className="value">{report.regularity}</span>
+                )}
+
+                <div className="report-card-header">
+                  <div className="report-avatar">{report.tenantName?.charAt(0) || '?'}</div>
+                  <div className="report-user-info">
+                    <h4>{report.tenantName}</h4>
+                    <p>{report.location || historyEntry.location || 'N/A'}</p>
+                  </div>
+                  <div className="report-date-stars">
+                    <span className="date-text">{report.date}</span>
+                    <div className="stars-row">
+                      {[1, 2, 3, 4, 5].map(s => (
+                        <Star key={s} size={12} fill={report.rating >= s ? "#FFA000" : "none"} color="#FFA000" />
+                      ))}
                     </div>
                   </div>
                 </div>
 
-                {report.tenantResponse && (
-                  <div className="contestation-detail-static mt-4">
-                    <div className="contestation-header">
-                      <AlertTriangle size={18} color="#FF5252" />
-                      <h4>Contestation du locataire</h4>
-                    </div>
-                    <p>{report.tenantResponse}</p>
+                <div className="report-section-label">Infos Bien</div>
+                <div className="report-info-bien">
+                  <div className="info-item">
+                    <Home size={14} color="#003366" />
+                    <span>{report.propertyType || historyEntry.propertyType || 'N/A'}</span>
                   </div>
+                  <div className="info-item">
+                    <MapPin size={14} color="#003366" />
+                    <span>{report.propertyName || historyEntry.property || 'N/A'}</span>
+                  </div>
+                  <div className="info-item">
+                    <DollarSign size={14} color="#003366" />
+                    <span>{report.price || historyEntry.price || 'N/A'}</span>
+                  </div>
+                </div>
+
+                <div className="report-section-label">Commentaire</div>
+                <div className="report-comment-box">
+                  <p>{report.comment}</p>
+                </div>
+
+                {report.tenantResponse && (
+                  <>
+                    <div className="report-section-label" style={{ color: '#FF5252' }}>
+                      <AlertTriangle size={14} /> Contestation
+                    </div>
+                    <div className="report-comment-box" style={{ background: '#FFF5F5', border: '1px solid #FFE5E5' }}>
+                      <p>{report.tenantResponse}</p>
+                    </div>
+                  </>
                 )}
+
+                <div className="report-card-actions" style={{ marginTop: '16px' }}>
+                  <button className="btn-primary-full-width" onClick={() => setIsDetailOpen(true)}>
+                    Détails du rapport
+                  </button>
+                </div>
               </div>
             ) : (
               <p className="empty-state">Aucun rapport détaillé trouvé pour cette période.</p>
@@ -152,6 +186,22 @@ const TenantHistoryDetail = () => {
           </div>
         </div>
       </div>
+
+      {localReport && (
+        <ReportDetailModal
+          isOpen={isDetailOpen}
+          report={localReport}
+          onClose={() => setIsDetailOpen(false)}
+          onEdit={(id, comment) => {
+            console.log('Edit report in history', id, comment);
+            const idx = reports.findIndex(r => r.id === id);
+            if (idx > -1) {
+              reports[idx].comment = comment;
+              setLocalReport({ ...reports[idx] });
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -1,25 +1,29 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, SlidersHorizontal, Filter, UserPlus, Phone, Mail, Building, CheckCircle, Clock, XCircle } from 'lucide-react';
-import { tenants, allPlatformUsers } from '../../data/mockData';
+import { tenants, allPlatformUsers, properties } from '../../data/mockData';
 import TenantSelectionModal from '../../components/Modals/TenantSelectionModal';
 import ManualTenantModal from '../../components/Modals/ManualTenantModal';
+import PropertySelectionModal from '../../components/Modals/PropertySelectionModal';
 import './Locataires.css';
 
 const Locataires = () => {
   const navigate = useNavigate();
-  const [localTenants, setLocalTenants] = React.useState(tenants);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filterRelation, setFilterRelation] = React.useState('Toutes les relations');
   const [filterOccupancy, setFilterOccupancy] = React.useState('Tous les statuts');
+  const [refresh, setRefresh] = React.useState(0);
   const [isSelectionModalOpen, setIsSelectionModalOpen] = React.useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = React.useState(false);
+  const [isPropSelectionOpen, setIsPropSelectionOpen] = React.useState(false);
+  const [pendingTenant, setPendingTenant] = React.useState(null); // tenant waiting for property assignment
 
   const filteredTenants = React.useMemo(() => {
-    return (localTenants || []).filter(t => {
-      const matchesSearch = t.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            t.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            t.property?.toLowerCase().includes(searchTerm.toLowerCase());
+    return (tenants || []).filter(t => {
+      const sTerm = searchTerm.toLowerCase();
+      const matchesSearch = (t.name || '').toLowerCase().includes(sTerm) || 
+                            (t.email || '').toLowerCase().includes(sTerm) ||
+                            (t.property || '').toLowerCase().includes(sTerm);
       
       const matchesRelation = filterRelation === 'Toutes les relations' || t.status === filterRelation;
       
@@ -28,7 +32,7 @@ const Locataires = () => {
       
       return matchesSearch && matchesRelation && matchesOccupancy;
     });
-  }, [localTenants, searchTerm, filterRelation, filterOccupancy]);
+  }, [tenants, searchTerm, filterRelation, filterOccupancy, refresh]);
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -107,7 +111,6 @@ const Locataires = () => {
           <span>Contact</span>
           <span>Relation</span>
           <span>Statut</span>
-          <span>Actions</span>
         </div>
 
         <div className="locataires-list">
@@ -115,7 +118,12 @@ const Locataires = () => {
             filteredTenants.map((tenant) => (
               <div key={tenant.id} className="locataire-row" onClick={() => navigate(`/locataires/${tenant.id}`)}>
                 <div className="tenant-main">
-                  <div className="avatar-md">{tenant.initials}</div>
+                  <div className="avatar-md" style={{ overflow: 'hidden', padding: 0, background: tenant.photo ? 'transparent' : undefined }}>
+                    {tenant.photo
+                      ? <img src={tenant.photo} alt={tenant.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                      : tenant.initials
+                    }
+                  </div>
                   <div className="tenant-info">
                     <h4>{tenant.name}</h4>
                     <p>{tenant.email}</p>
@@ -145,9 +153,6 @@ const Locataires = () => {
                    </span>
                 </div>
 
-                <div className="tenant-actions">
-                  <button className="btn-view">Voir profil</button>
-                </div>
               </div>
             ))
           ) : (
@@ -158,6 +163,7 @@ const Locataires = () => {
         </div>
       </div>
 
+      {/* Step 1: Choose existing or manual */}
       <TenantSelectionModal
         isOpen={isSelectionModalOpen}
         onClose={() => setIsSelectionModalOpen(false)}
@@ -168,19 +174,23 @@ const Locataires = () => {
         onSelect={(user) => {
           const newTenant = {
             ...user,
-            id: Date.now(),
-            status: 'Vérifié',
-            property: null, // Just adding to the list, not assigned yet
+            id: user.id || Date.now(),
+            status: 'Non-vérifié',
+            property: null,
             unitNumber: null,
             initials: user.initials || user.name.split(' ').map(n => n[0]).join('')
           };
-          setLocalTenants([newTenant, ...localTenants]);
+          tenants.unshift(newTenant);
+          setLocalTenants([...tenants]);
           setIsSelectionModalOpen(false);
-          alert(`${user.name} a été ajouté à votre liste de locataires.`);
+          // Open property selection
+          setPendingTenant(newTenant);
+          setIsPropSelectionOpen(true);
         }}
         title="Ajouter un locataire à votre liste"
       />
 
+      {/* Step 1b: Manual creation with inline property selection */}
       <ManualTenantModal
         isOpen={isManualModalOpen}
         onClose={() => setIsManualModalOpen(false)}
@@ -190,14 +200,64 @@ const Locataires = () => {
             name: data.name,
             email: data.email,
             phone: data.phone,
+            photo: data.photo || null,
             status: 'Non-vérifié',
-            property: null,
-            unitNumber: null,
+            property: data.property?.name || null,
+            unitNumber: data.unit?.number || null,
+            occupancyDate: data.occupancyDate || new Date().toISOString().split('T')[0],
             initials: data.name.split(' ').map(n => n[0]).join('')
           };
-          setLocalTenants([newTenant, ...localTenants]);
+          tenants.unshift(newTenant);
+          // Associate to property
+          if (data.property) {
+            const propRef = properties.find(p => p.id === data.property.id);
+            if (propRef) {
+              if (!propRef.currentTenants) propRef.currentTenants = [];
+              propRef.currentTenants.push(newTenant.id);
+              propRef.occupants = propRef.currentTenants.length;
+              propRef.status = propRef.type === 'Immeuble' ? 'Partiellement occupé' : 'Occupé';
+              // Mark unit if Immeuble
+              if (data.unit && propRef.units) {
+                const uIdx = propRef.units.findIndex(u => u.id === data.unit.id);
+                if (uIdx > -1) propRef.units[uIdx].tenantId = newTenant.id;
+              }
+            }
+          }
+          setRefresh(r => r + 1);
           setIsManualModalOpen(false);
-          alert(`Nouveau profil créé pour ${data.name}.`);
+        }}
+      />
+
+      {/* Step 2: Associate property (+unit if Immeuble) */}
+      <PropertySelectionModal
+        isOpen={isPropSelectionOpen}
+        onClose={() => { setIsPropSelectionOpen(false); setPendingTenant(null); }}
+        tenantName={pendingTenant?.name}
+        onConfirm={(property, unit, occupancyDate) => {
+          // Update the tenant
+          const idx = tenants.findIndex(t => t.id === pendingTenant.id);
+          if (idx > -1) {
+            tenants[idx].property = property.name;
+            tenants[idx].unitNumber = unit ? unit.number : null;
+            tenants[idx].occupancyDate = occupancyDate;
+          }
+          // Update the property
+          if (!property.currentTenants) property.currentTenants = [];
+          if (!property.currentTenants.includes(pendingTenant.id)) {
+            property.currentTenants.push(pendingTenant.id);
+          }
+          property.occupants = property.currentTenants.length;
+          property.status = property.type === 'Immeuble' ? 'Partiellement occupé' : 'Occupé';
+          // Update the unit if applicable
+          if (unit) {
+            const propRef = properties.find(p => p.id === property.id);
+            const uIdx = propRef?.units?.findIndex(u => u.id === unit.id);
+            if (uIdx !== undefined && uIdx > -1) propRef.units[uIdx].tenantId = pendingTenant.id;
+          }
+          setRefresh(r => r + 1);
+          setIsPropSelectionOpen(false);
+          setPendingTenant(null);
+          alert(`${tenants.find(t => t.id === (pendingTenant?.id))?.name || ''} a été associé(e) à ${property.name}${unit ? ` - ${unit.number}` : ''}.`);
         }}
       />
     </div>

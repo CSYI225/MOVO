@@ -11,6 +11,7 @@ const Biens = () => {
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filterType, setFilterType] = React.useState('Tous les types');
+  const [refresh, setRefresh] = React.useState(0);
 
   const filteredProperties = React.useMemo(() => {
     return (properties || []).filter(p => {
@@ -19,7 +20,7 @@ const Biens = () => {
       const matchesType = filterType === 'Tous les types' || p.type === filterType;
       return matchesSearch && matchesType;
     });
-  }, [searchTerm, filterType]);
+  }, [searchTerm, filterType, refresh]);
 
   return (
     <div className="biens-page">
@@ -67,7 +68,18 @@ const Biens = () => {
           filteredProperties.map((property) => (
             <div key={property.id} className="property-card-large">
               <div className="property-image-placeholder">
-                {property.type === 'Immeuble' ? <Building size={48} /> : <Home size={48} />}
+                <img 
+                  src={`https://picsum.photos/seed/${property.id}/400/200`} 
+                  alt={property.name} 
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextElementSibling.style.display = 'flex';
+                  }}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                <div className="fallback-icon" style={{ display: 'none', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                  {property.type === 'Immeuble' ? <Building size={48} color="#9CA3AF" /> : <Home size={48} color="#9CA3AF" />}
+                </div>
                 <span className={`status-badge ${property.status === 'Occupé' || property.status === 'Partiellement occupé' ? 'status-green' : 'status-orange'}`}>
                   {property.status}
                 </span>
@@ -118,6 +130,7 @@ const Biens = () => {
       <PropertyModal 
         isOpen={isAddModalOpen} 
         onClose={() => setIsAddModalOpen(false)} 
+        onSave={() => setRefresh(r => r + 1)}
       />
     </div>
   );

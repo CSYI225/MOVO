@@ -9,7 +9,12 @@ const TenantSelectionModal = ({ isOpen, onClose, onSelect, onManualAdd, title = 
     // We search through ALL platform users, not just current ones
     const source = allPlatformUsers && allPlatformUsers.length > 0 ? allPlatformUsers : tenants;
     
-    return (source || []).filter(t =>
+    return (source || []).map(u => {
+      // Check if user is already in our tenants list and assigned
+      const existingTenant = tenants.find(t => t.id === u.id);
+      const isAssigned = existingTenant ? !!existingTenant.property : false;
+      return { ...u, isAssigned, currentProp: existingTenant?.property };
+    }).filter(t =>
       t.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.phone?.includes(searchTerm)
@@ -50,7 +55,7 @@ const TenantSelectionModal = ({ isOpen, onClose, onSelect, onManualAdd, title = 
                   <div className="item-info-v2">
                     <h4>{user.name}</h4>
                     <p>{user.email}</p>
-                    {user.isAssigned && <span className="status-indicator-mini">Déjà occupé ({user.property})</span>}
+                    {user.isAssigned && <span className="status-indicator-mini" style={{ color: '#F59E0B', fontSize: '11px', fontWeight: 600 }}>Déjà occupé ({user.currentProp})</span>}
                   </div>
                   {!user.isAssigned && <ChevronDown size={18} color="#0F322B" style={{ transform: 'rotate(-90deg)', marginLeft: 'auto' }} />}
                 </div>
