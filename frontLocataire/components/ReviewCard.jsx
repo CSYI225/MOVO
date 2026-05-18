@@ -1,11 +1,18 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
-import Colors from '../constants/Colors';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { COLORS, fs } from '../Styles/global';
+import RatingStars from './RatingStars';
 
-const ReviewCard = ({ data, onValidate, onContest, showActions = true, status }) => {
+const ReviewCard = ({ data, onValidate, onContest, showActions = true, status, onPress, compact = false }) => {
   return (
-    <View style={styles.card}>
+    <TouchableOpacity 
+      style={styles.card}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.9 : 1}
+      disabled={!onPress}
+    >
+      {/* Top Status Icon Badge */}
       {status === 'validated' && (
         <View style={styles.statusBadge}>
           <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
@@ -13,215 +20,263 @@ const ReviewCard = ({ data, onValidate, onContest, showActions = true, status })
       )}
       {status === 'contested' && (
         <View style={styles.statusBadge}>
-          <Ionicons name="warning" size={24} color="#FF5252" />
+          <Ionicons name="alert-circle" size={24} color="#FF5252" />
         </View>
       )}
 
-      <View style={styles.header}>
-        <View style={styles.avatar}>
-           <Text style={styles.avatarText}>CS</Text>
+      {/* Date Header for compact mode */}
+      {compact && (
+        <View style={styles.compactHeader}>
+          <Text style={styles.compactDateText}>{data?.date || "Mars 2024"}</Text>
         </View>
-        <View style={styles.userInfo}>
-          <Text style={styles.userName}>Coulibaly Sékou</Text>
-          <Text style={styles.userLocation}>Abidjan, Cocody</Text>
-        </View>
-        <View style={styles.dateInfo}>
-          <Text style={styles.dateText}>Mar 2024</Text>
-          <View style={styles.stars}>
-            {[1, 2, 3, 4, 5].map((s) => (
-              <FontAwesome key={s} name="star" size={12} color="#FFA000" style={styles.star} />
-            ))}
+      )}
+
+      {/* Report Header: Rounded Square Avatar, Name, Date/Stars (Hidden in compact mode) */}
+      {!compact && (
+        <View style={styles.header}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>CS</Text>
+          </View>
+          <View style={styles.userInfo}>
+            <Text style={styles.userName}>Coulibaly Sékou</Text>
+            <Text style={styles.userLocation}>Abidjan, Cocody</Text>
+          </View>
+          <View style={styles.dateInfo}>
+            <Text style={styles.dateText}>{data?.date || "Mars 2024"}</Text>
+            <RatingStars rating={5} style={styles.ratingStars} />
           </View>
         </View>
-      </View>
+      )}
 
-      <Text style={styles.sectionTitle}>Infos Bien</Text>
+      {/* Section: Infos Bien */}
+      <Text style={styles.sectionLabel}>Infos Bien</Text>
       <View style={styles.infoBienContainer}>
         <View style={styles.infoItem}>
-          <Ionicons name="home-outline" size={16} color="#003366" />
-          <Text style={styles.infoItemText}>Duplexe</Text>
+          <Ionicons name="home-outline" size={14} color="#182C2A" />
+          <Text style={styles.infoItemText}>Duplex</Text>
         </View>
         <View style={styles.infoItem}>
-          <Ionicons name="location-outline" size={16} color="#003366" />
-          <Text style={styles.infoItemText}>Abidjan,Cocody</Text>
+          <Ionicons name="location-outline" size={14} color="#182C2A" />
+          <Text style={styles.infoItemText}>Abidjan, Cocody</Text>
         </View>
         <View style={styles.infoItem}>
-          <FontAwesome name="money" size={16} color="#003366" />
+          <Ionicons name="cash-outline" size={14} color="#182C2A" />
           <Text style={styles.infoItemText}>15 000 000 FCFA</Text>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Commentaire</Text>
+      {/* Section: Commentaire */}
+      <Text style={styles.sectionLabel}>Commentaire</Text>
       <View style={styles.commentBox}>
-        <Text style={styles.commentText} numberOfLines={8}>
-          Bon locataire, il paye toujours son loyer à temps et ses voisins ne se sont jamais pleind de lui. 
-          En tout cas il n'y a rien à lui reprocher Bon locataire, il paye toujours son loyer à temps...
+        <Text style={styles.commentText}>
+          Bon locataire, il paye toujours son loyer à temps et ses voisins ne se sont jamais plaints de lui. 
+          En tout cas il n'y a rien à lui reprocher, c'est un excellent profil pour la plateforme.
         </Text>
       </View>
 
-      <Text style={styles.sectionTitle}>Régularité dans le paiement</Text>
-      <View style={styles.regularityContainer}>
-        <View style={[styles.regularityButton, { backgroundColor: '#7ED38F' }]}>
-          <Text style={styles.regularityText}>Toujours à temps</Text>
+      {/* Contestation Box (Displays only if contested) */}
+      {status === 'contested' && (
+        <View style={styles.contestationBox}>
+          <Ionicons name="warning-outline" size={14} color="#F43F5E" />
+          <Text style={styles.contestationText}>Ce rapport a été contesté par le locataire</Text>
         </View>
-        <View style={[styles.regularityButton, { backgroundColor: '#FFFFFF', borderColor: '#E0E0E0', borderWidth: 1 }]}>
-          <Text style={[styles.regularityText, { color: '#666' }]}>Peu de Retard</Text>
-        </View>
-        <View style={[styles.regularityButton, { backgroundColor: '#FFFFFF', borderColor: '#E0E0E0', borderWidth: 1 }]}>
-          <Text style={[styles.regularityText, { color: '#666' }]}>Pas régulier</Text>
-        </View>
-      </View>
+      )}
 
+      {/* Actions Buttons (Valider / Contester) */}
       {showActions && !status && (
         <View style={styles.actionContainer}>
           <TouchableOpacity 
-            style={[styles.actionButton, { backgroundColor: Colors.primary }]}
+            style={styles.actionValidate}
             onPress={onValidate}
+            activeOpacity={0.7}
           >
-            <Ionicons name="checkmark-circle" size={18} color="white" />
-            <Text style={styles.actionButtonText}>Valider</Text>
+            <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" />
+            <Text style={styles.actionValidateText}>Valider</Text>
           </TouchableOpacity>
+          
           <TouchableOpacity 
-            style={[styles.actionButton, { backgroundColor: Colors.secondary }]}
+            style={styles.actionContest}
             onPress={onContest}
+            activeOpacity={0.7}
           >
-            <Ionicons name="alert-circle" size={18} color="white" />
-            <Text style={styles.actionButtonText}>Contester</Text>
+            <Ionicons name="alert-circle-outline" size={16} color="#182C2A" />
+            <Text style={styles.actionContestText}>Contester</Text>
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#E0E7E7',
-    borderRadius: 20,
-    padding: 15,
-    marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0', // Sleek flat double-border line
     position: 'relative',
+    marginBottom: 20,
   },
   statusBadge: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    zIndex: 1,
+    top: 16,
+    right: 16,
+    zIndex: 2,
+  },
+  compactHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+    marginTop: -4,
+  },
+  compactDateText: {
+    fontSize: fs(11),
+    color: '#94A3B8',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 20,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.accent,
+    width: 52,
+    height: 52,
+    backgroundColor: '#C9E84F',
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
   },
   avatarText: {
-    fontWeight: 'bold',
+    fontSize: fs(20),
+    fontWeight: '800',
+    color: '#0F322B',
   },
   userInfo: {
+    marginLeft: 14,
     flex: 1,
   },
   userName: {
-    fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: fs(15),
+    fontWeight: '700',
+    color: '#0F322B',
+    marginBottom: 2,
   },
   userLocation: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: fs(12),
+    color: '#64748B',
   },
   dateInfo: {
     alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   dateText: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: fs(11),
+    color: '#94A3B8',
+    fontWeight: '600',
+    marginBottom: 4,
   },
-  stars: {
-    flexDirection: 'row',
+  ratingStars: {
     marginTop: 2,
   },
-  star: {
-    marginLeft: 2,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-    marginTop: 10,
+  sectionLabel: {
+    fontSize: fs(10),
+    fontWeight: '800',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+    marginTop: 18,
   },
   infoBienContainer: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 10,
     justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 14,
+    gap: 8,
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
   },
   infoItemText: {
-    fontSize: 10,
-    marginLeft: 4,
-    color: '#003366',
-    fontWeight: '600',
+    fontSize: fs(11),
+    fontWeight: '700',
+    color: '#0F322B',
   },
   commentBox: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 15,
-    minHeight: 100,
+    backgroundColor: '#F8FAFC',
+    padding: 16,
+    borderRadius: 14,
+    minHeight: 80,
+    justifyContent: 'center',
   },
   commentText: {
-    fontSize: 14,
+    fontSize: fs(13),
     lineHeight: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    color: '#334155',
+    fontWeight: '500',
   },
-  regularityContainer: {
+  contestationBox: {
+    marginTop: 16,
+    backgroundColor: '#FFF1F2',
+    padding: 12,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#F43F5E',
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 5,
-  },
-  regularityButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    flex: 0.32,
     alignItems: 'center',
+    gap: 8,
   },
-  regularityText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: 'white',
+  contestationText: {
+    fontSize: fs(11),
+    fontWeight: '700',
+    color: '#F43F5E',
   },
   actionContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 15,
+    justifyContent: 'space-between',
+    marginTop: 20,
+    gap: 12,
   },
-  actionButton: {
+  actionValidate: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 30,
-    borderRadius: 10,
-    width: '45%',
+    backgroundColor: '#0F322B',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 6,
   },
-  actionButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    marginLeft: 8,
-  }
+  actionValidateText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: fs(13),
+  },
+  actionContest: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FAFBFB',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 6,
+  },
+  actionContestText: {
+    color: '#182C2A',
+    fontWeight: '700',
+    fontSize: fs(13),
+  },
 });
 
 export default ReviewCard;

@@ -1,47 +1,69 @@
 import React from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, Platform, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Colors from '../constants/Colors';
+import { COLORS, fs } from '../Styles/global';
+import UserAvatar from './UserAvatar';
 
-const Header = ({ showSearch = true, title, onBack, onNotificationPress, onProfilePress }) => {
+const Header = ({ 
+  showSearch = false, 
+  title, 
+  onBack, 
+  onNotificationPress, 
+  onProfilePress,
+  searchValue,
+  onSearchChange,
+  placeholder = "Rechercher..."
+}) => {
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
+        {/* Left Side: Back Button or Menu Icon */}
         {onBack ? (
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="black" />
+          <TouchableOpacity onPress={onBack} style={styles.backButton} activeOpacity={0.7}>
+            <Ionicons name="arrow-back" size={24} color="#182C2A" />
           </TouchableOpacity>
         ) : (
-          <View style={styles.logoContainer}>
-            {/* Replace with actual logo image if available */}
-            <View style={styles.logoPlaceholder}>
-               <Text style={styles.logoText}>movo</Text>
-            </View>
-          </View>
+          <TouchableOpacity style={styles.backButton} activeOpacity={0.7}>
+            <Ionicons name="menu-outline" size={26} color="#182C2A" />
+          </TouchableOpacity>
         )}
         
-        {title && <Text style={styles.title}>{title}</Text>}
-
-        <View style={styles.rightIcons}>
-          <TouchableOpacity style={styles.iconButton} onPress={onNotificationPress}>
-            <Ionicons name="notifications-outline" size={24} color="black" />
-            <View style={styles.badge} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.avatarContainer} onPress={onProfilePress}>
-             <View style={styles.avatar}>
-               <Text style={styles.avatarText}>CS</Text>
-             </View>
-          </TouchableOpacity>
+        {/* Center: Movo Logo Image */}
+        <View style={styles.logoContainer}>
+          <Image 
+            source={require('../assets/images/logo.png')} 
+            style={styles.logoImage} 
+          />
         </View>
+
+        {/* Right Side: Navigation or Page Title */}
+        {onBack ? (
+          <View style={styles.titleContainer}>
+            <Text style={styles.titleText}>{title || ""}</Text>
+          </View>
+        ) : (
+          <View style={styles.rightIcons}>
+            <TouchableOpacity style={styles.iconButton} onPress={onNotificationPress} activeOpacity={0.7}>
+              <Ionicons name="notifications-outline" size={24} color="#182C2A" />
+              <View style={styles.badge} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.avatarWrapper} onPress={onProfilePress} activeOpacity={0.7}>
+              <UserAvatar initials="CS" size={32} color="#C9E84F" textColor="#182C2A" />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
+      {/* Modern Outlined Search Bar */}
       {showSearch && (
         <View style={styles.searchContainer}>
-          <Ionicons name="search-outline" size={20} color={Colors.gray} style={styles.searchIcon} />
+          <Ionicons name="search-outline" size={20} color="#7A8B89" style={styles.searchIcon} />
           <TextInput
-            placeholder="Recherche..."
+            placeholder={placeholder}
             style={styles.searchInput}
-            placeholderTextColor={Colors.gray}
+            placeholderTextColor="#7A8B89"
+            value={searchValue}
+            onChangeText={onSearchChange}
           />
         </View>
       )}
@@ -51,89 +73,87 @@ const Header = ({ showSearch = true, title, onBack, onNotificationPress, onProfi
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.background,
-    paddingHorizontal: 20,
-    paddingTop: 40,
-    paddingBottom: 15,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight + 10,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F4F4',
   },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    height: 40,
   },
   logoContainer: {
-    width: 60,
-    height: 40,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+  logoImage: {
+    width: 80,
+    height: 26,
+    resizeMode: 'contain',
+  },
+  backButton: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  titleContainer: {
+    minWidth: 80,
+    alignItems: 'flex-end',
     justifyContent: 'center',
   },
-  logoPlaceholder: {
-    backgroundColor: '#003366',
-    padding: 5,
-    borderRadius: 5,
-  },
-  logoText: {
-    color: '#FF9900',
-    fontWeight: 'bold',
-    fontSize: 18,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    flex: 1,
-    marginLeft: 15,
+  titleText: {
+    fontSize: fs(15),
+    fontWeight: '700',
+    color: '#182C2A',
   },
   rightIcons: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   iconButton: {
-    marginRight: 15,
+    marginRight: 12,
     position: 'relative',
+    padding: 4,
   },
   badge: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: 'red',
-    borderWidth: 1,
-    borderColor: 'white',
+    top: 3,
+    right: 3,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#84B889',
+    borderWidth: 1.2,
+    borderColor: '#FFFFFF',
   },
-  avatarContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.accent,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontWeight: 'bold',
-    fontSize: 16,
+  avatarWrapper: {
+    marginLeft: 2,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    height: 45,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 30,
+    paddingHorizontal: 16,
+    height: 48,
+    marginTop: 12,
   },
   searchIcon: {
     marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: fs(14),
+    color: '#182C2A',
   },
-  backButton: {
-    padding: 5,
-  }
 });
 
 export default Header;

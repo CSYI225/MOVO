@@ -8,6 +8,7 @@ import Accueil from './Pages/Accueil';
 import Contestation from './Pages/Contestation';
 import Notifications from './Pages/Notifications';
 import Profil from './Pages/Profil';
+import DetailsAvis from './Pages/DetailsAvis';
 
 const Stack = createNativeStackNavigator();
 
@@ -25,6 +26,7 @@ export default function App() {
           <Stack.Screen name="Contestation" component={Contestation} />
           <Stack.Screen name="Notifications" component={Notifications} />
           <Stack.Screen name="Profil" component={Profil} />
+          <Stack.Screen name="DetailsAvis" component={DetailsAvis} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

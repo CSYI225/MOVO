@@ -1,69 +1,97 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/Header';
-import Colors from '../constants/Colors';
+import { COLORS, fs } from '../Styles/global';
+import UserAvatar from '../components/UserAvatar';
+import RatingStars from '../components/RatingStars';
 
 export default function Profil({ navigation }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [nom, setNom] = useState('Coulibaly');
+  const [prenoms, setPrenoms] = useState('Sékou Yéfougn-gnigui');
+
   return (
     <View style={styles.container}>
-      <Header 
-        title="Profil" 
-        onBack={() => navigation.goBack()} 
+      <Header
+        title="Profil"
+        onBack={() => navigation.goBack()}
         showSearch={false}
-        onNotificationPress={() => navigation.navigate('Notifications')}
-        onProfilePress={() => {}}
       />
-      
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Profile Info Header */}
         <View style={styles.profileHeader}>
-          <View style={styles.avatarLarge}>
-            <Text style={styles.avatarLargeText}>CS</Text>
-          </View>
+          <UserAvatar initials="CS" size={72} color="#C9E84F" textColor="#0F322B" />
           <View style={styles.profileMainInfo}>
-            <Text style={styles.profileName}>Koné Ahmad</Text>
+            <Text style={styles.profileName}>{nom} {prenoms.split(' ')[0]}</Text>
             <View style={styles.labelLocataire}>
-              <Text style={styles.labelLocataireText}>Locataire</Text>
+              <Text style={styles.labelLocataireText}>Locataire Vérifié</Text>
             </View>
           </View>
           <View style={styles.ratingBox}>
-            <Text style={styles.ratingText}>4,7</Text>
-            <View style={styles.starsRow}>
-              {[1, 2, 3, 4, 5].map((s) => (
-                <FontAwesome key={s} name="star" size={10} color="#FFA000" style={styles.star} />
-              ))}
-            </View>
+            <Text style={styles.ratingText}>5.0</Text>
+            <RatingStars rating={5} />
           </View>
         </View>
 
         {/* Compte Section */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Ionicons name="person-outline" size={20} color="black" />
+            <Ionicons name="person-outline" size={20} color="#0F322B" />
             <Text style={styles.cardTitle}>Compte</Text>
           </View>
+          
           <View style={styles.cardRow}>
             <Text style={styles.rowLabel}>Nom</Text>
-            <Text style={styles.rowValue}>Coulibaly</Text>
+            {isEditing ? (
+              <TextInput
+                style={styles.rowInput}
+                value={nom}
+                onChangeText={setNom}
+                placeholder="Nom"
+                placeholderTextColor="#7A8B89"
+              />
+            ) : (
+              <Text style={styles.rowValue}>{nom}</Text>
+            )}
           </View>
+          
           <View style={styles.cardRow}>
             <Text style={styles.rowLabel}>Prénoms</Text>
-            <Text style={styles.rowValue}>Sékou Yéfougn-gnigui</Text>
+            {isEditing ? (
+              <TextInput
+                style={styles.rowInput}
+                value={prenoms}
+                onChangeText={setPrenoms}
+                placeholder="Prénoms"
+                placeholderTextColor="#7A8B89"
+              />
+            ) : (
+              <Text style={styles.rowValue}>{prenoms}</Text>
+            )}
           </View>
+          
           <View style={styles.cardRow}>
             <Text style={styles.rowLabel}>Mot de passe</Text>
-            <Text style={[styles.rowValue, { color: '#7ED38F' }]}>•••••</Text>
+            <Text style={[styles.rowValue, { color: '#4CAF50' }]}>••••••••</Text>
           </View>
-          <TouchableOpacity style={styles.modifierButton}>
-            <Text style={styles.modifierButtonText}>Modifier</Text>
+          
+          <TouchableOpacity 
+            style={[styles.modifierButton, isEditing && styles.saveButton]} 
+            onPress={() => setIsEditing(!isEditing)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.modifierButtonText, isEditing && styles.saveButtonText]}>
+              {isEditing ? "Enregistrer les modifications" : "Modifier les informations"}
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* Infos Bien Actuel Section */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Ionicons name="home-outline" size={20} color="black" />
+            <Ionicons name="home-outline" size={20} color="#0F322B" />
             <Text style={styles.cardTitle}>Infos Bien Actuel</Text>
           </View>
           <View style={styles.cardRow}>
@@ -76,21 +104,22 @@ export default function Profil({ navigation }) {
           </View>
           <View style={styles.cardRow}>
             <Text style={styles.rowLabel}>Type maison</Text>
-            <Text style={styles.rowValue}>Duplexe</Text>
+            <Text style={styles.rowValue}>Duplex</Text>
           </View>
           <View style={styles.cardRow}>
             <Text style={styles.rowLabel}>Localisation</Text>
-            <Text style={styles.rowValue}>Abidjan,Cocody</Text>
+            <Text style={styles.rowValue}>Abidjan, Cocody</Text>
           </View>
           <View style={styles.cardRow}>
-            <Text style={styles.rowLabel}>Prix</Text>
+            <Text style={styles.rowLabel}>Prix mensuel</Text>
             <Text style={styles.rowValue}>15 000 000 FCFA</Text>
           </View>
         </View>
 
-        <TouchableOpacity style={styles.logoutButton}>
-          <Ionicons name="log-out-outline" size={24} color="white" style={styles.logoutIcon} />
-          <Text style={styles.logoutText}>Déconnexion</Text>
+        {/* Déconnexion */}
+        <TouchableOpacity style={styles.logoutButton} activeOpacity={0.7}>
+          <Ionicons name="log-out-outline" size={20} color="#FF5252" style={styles.logoutIcon} />
+          <Text style={styles.logoutText}>Déconnexion du compte</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -100,124 +129,142 @@ export default function Profil({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: '#FAFBFB',
   },
   scrollContent: {
-    padding: 20,
+    padding: 16,
     paddingBottom: 40,
   },
   profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 24,
     marginTop: 10,
-  },
-  avatarLarge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FFE0B2',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  avatarLargeText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#F57C00',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 20,
+    padding: 16,
   },
   profileMainInfo: {
     flex: 1,
+    marginLeft: 12,
   },
   profileName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#FFA000',
+    fontSize: fs(18),
+    fontWeight: '700',
+    color: '#0F322B',
   },
   labelLocataire: {
-    backgroundColor: '#A5D6A7',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 15,
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
     alignSelf: 'flex-start',
-    marginTop: 5,
+    marginTop: 6,
   },
   labelLocataireText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
+    color: '#4CAF50',
+    fontSize: fs(10),
+    fontWeight: '700',
   },
   ratingBox: {
     alignItems: 'center',
   },
   ratingText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  starsRow: {
-    flexDirection: 'row',
-  },
-  star: {
-    marginHorizontal: 1,
+    fontSize: fs(20),
+    fontWeight: '800',
+    color: '#0F322B',
+    marginBottom: 2,
   },
   card: {
-    backgroundColor: '#D1D9D9',
-    borderRadius: 15,
-    padding: 15,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#A5D6A7',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F4F4',
+    paddingBottom: 10,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 10,
+    fontSize: fs(14),
+    fontWeight: '700',
+    marginLeft: 8,
+    color: '#0F322B',
   },
   cardRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    alignItems: 'center',
+    marginBottom: 12,
   },
   rowLabel: {
-    color: '#333',
-    fontSize: 13,
+    color: '#64748B',
+    fontSize: fs(12),
+    fontWeight: '500',
   },
   rowValue: {
-    fontWeight: 'bold',
-    fontSize: 13,
+    fontWeight: '700',
+    fontSize: fs(12),
+    color: '#182C2A',
+  },
+  rowInput: {
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    fontSize: fs(12),
+    fontWeight: '700',
+    color: '#182C2A',
+    backgroundColor: '#FAFBFB',
+    minWidth: 180,
+    textAlign: 'right',
   },
   modifierButton: {
-    backgroundColor: '#7ED38F',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 15,
-    alignSelf: 'center',
+    borderWidth: 1.5,
+    borderColor: '#0F322B',
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: 'center',
     marginTop: 10,
   },
   modifierButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: '#0F322B',
+    fontWeight: '700',
+    fontSize: fs(12),
+  },
+  saveButton: {
+    backgroundColor: '#0F322B',
+    borderColor: '#0F322B',
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
   },
   logoutButton: {
-    backgroundColor: '#FFCC80',
+    backgroundColor: '#FFF1F2',
+    borderWidth: 1.5,
+    borderColor: '#FAD4D4',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: 14,
+    borderRadius: 12,
     marginTop: 10,
   },
   logoutIcon: {
-    marginRight: 10,
+    marginRight: 8,
   },
   logoutText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 18,
+    color: '#FF5252',
+    fontWeight: '700',
+    fontSize: fs(14),
   }
 });
