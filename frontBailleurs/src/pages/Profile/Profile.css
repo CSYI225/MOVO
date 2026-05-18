@@ -1,0 +1,224 @@
+.profile-page-container {
+  padding: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.profile-header-banner {
+  background: white;
+  border-radius: 24px;
+  padding: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  border: 1px solid #F0F0F0;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.profile-form-grid.readonly input {
+  background: #F8F9FA;
+  border-color: transparent;
+  cursor: default;
+  color: #666;
+}
+
+.profile-form-grid.readonly .input-with-icon svg {
+  opacity: 0.6;
+}
+
+.profile-form-grid.readonly input:focus {
+  box-shadow: none;
+  border-color: transparent;
+}
+
+.profile-main-info {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.profile-avatar-wrapper {
+  position: relative;
+}
+
+.profile-avatar-large {
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, #C8E6C9 0%, #A5D6A7 100%);
+  color: #1B5E20;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  font-weight: 800;
+  border: 4px solid white;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.edit-avatar-btn {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 34px;
+  height: 34px;
+  background: #73BA7C;
+  color: white;
+  border: 3px solid white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.edit-avatar-btn:hover {
+  background: #0F322B;
+  transform: scale(1.1);
+}
+
+.profile-text-info h1 {
+  font-size: 28px;
+  font-weight: 800;
+  color: #1A1A1A;
+  margin-bottom: 2px;
+}
+
+.profile-subtitle {
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.rating-badge-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #E8F5E9;
+  padding: 4px 10px;
+  border-radius: 20px;
+  color: #73BA7C;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.profile-main-column {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.profile-section-card {
+  background: white;
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  border: 1px solid #F0F0F0;
+}
+
+.section-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #F8F9FA;
+}
+
+.section-icon {
+  color: #73BA7C;
+}
+
+.section-card-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1A1A1A;
+}
+
+.profile-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.form-group.full-width {
+  grid-column: span 2;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  margin-left: 4px;
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-icon svg {
+  position: absolute;
+  left: 16px;
+  color: #999;
+}
+
+.input-with-icon input {
+  width: 100%;
+  padding: 14px 14px 14px 48px;
+  background: #F8F9FA;
+  border: 1px solid #E9ECEF;
+  border-radius: 14px;
+  font-size: 15px;
+  color: #1A1A1A;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.input-with-icon input:focus {
+  outline: none;
+  border-color: #73BA7C;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(115, 186, 124, 0.1);
+}
+
+.profile-actions-footer {
+  display: flex;
+  justify-content: center;
+  padding-top: 20px;
+  border-top: 1px solid #F8F9FA;
+}
+
+.btn-edit-profile {
+  background: #73BA7C;
+  color: white;
+  border: none;
+  padding: 14px 32px;
+  border-radius: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(115, 186, 124, 0.3);
+}
+
+.btn-edit-profile:hover {
+  background: #0F322B;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(15, 50, 43, 0.2);
+}

@@ -1,0 +1,482 @@
+.bento-abonnement-container {
+  padding: 32px;
+  max-width: 1300px;
+  margin: 0 auto;
+  background-color: #f8fafc;
+  min-height: 100vh;
+}
+
+.bento-card {
+  background: white;
+  border-radius: 28px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  border: 1px solid #f1f5f9;
+  transition: transform 0.3s ease;
+}
+
+.bento-card:hover {
+  transform: translateY(-4px);
+}
+
+/* HEADER CARD */
+.bento-header-card {
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.header-content-v3 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-text-v3 h1 {
+  font-size: 28px;
+  font-weight: 800;
+  color: #0F322B;
+  margin-bottom: 4px;
+}
+
+.header-text-v3 p {
+  color: #64748b;
+  font-size: 15px;
+}
+
+.status-badge-v3 {
+  background: #f1f5f9;
+  padding: 8px 16px;
+  border-radius: 40px;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot-green {
+  width: 8px;
+  height: 8px;
+  background: #10B981;
+  border-radius: 50%;
+}
+
+.btn-renew-sub-v3 {
+  background: #0F322B;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(15, 50, 43, 0.2);
+}
+
+.btn-renew-sub-v3:hover {
+  background: #73BA7C;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(115, 186, 124, 0.3);
+}
+
+.header-tabs-v3 {
+  display: flex;
+  gap: 12px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 12px;
+}
+
+.tab-v3 {
+  background: transparent;
+  border: none;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.tab-v3.active {
+  color: #0F322B;
+  background: #f1f8f4;
+  border-radius: 12px;
+}
+
+/* BENTO GRID */
+.bento-grid-v3 {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr;
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.bento-col-left.expanded, .bento-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.card-title-v3 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.card-title-v3 h3 {
+  font-size: 16px;
+  font-weight: 800;
+  color: #475569;
+}
+
+.btn-edit-mini {
+  margin-left: auto;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* PLAN INFO CARD */
+.plan-details-v3 {
+  margin-bottom: 24px;
+}
+
+.plan-name-v3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #F49E00;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.plan-price-v3 {
+  font-size: 32px;
+  font-weight: 800;
+  color: #0F322B;
+}
+
+.plan-price-v3 small {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 400;
+}
+
+.plan-meta-v3 {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.meta-item-v3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* USAGE CARD */
+.usage-rows-v3 {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.usage-label-v3 {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.progress-v3-bg {
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.progress-v3-fill {
+  height: 100%;
+  border-radius: 10px;
+}
+
+.usage-footer-v3 {
+  margin-top: 24px;
+  font-size: 12px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+/* PROMO CARD (VERTICAL) */
+.promo-card-v3 {
+  background: linear-gradient(180deg, #0F322B 0%, #1a4d43 100%);
+  color: white;
+  text-align: center;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 32px;
+}
+
+.promo-icon-v3 {
+  margin-bottom: 20px;
+}
+
+.promo-card-v3 h2 {
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.promo-card-v3 p {
+  font-size: 14px;
+  opacity: 0.9;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.promo-price-v3 {
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 24px;
+}
+
+.promo-price-v3 small {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.btn-promo-v3 {
+  background: #F49E00;
+  color: #0F322B;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* MINI STATS */
+.mini-stats-grid-v3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.mini-stat-v3 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.stat-val-v3 {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 8px 0 2px;
+}
+
+.mini-stat-v3 p {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* DATE CARD */
+.billing-date-card-v3 {
+  text-align: center;
+}
+
+.date-display-v3 {
+  background: #f1f8f4;
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.date-month-v3 {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0F322B;
+  opacity: 0.6;
+}
+
+.date-day-v3 {
+  font-size: 48px;
+  font-weight: 800;
+  color: #0F322B;
+  line-height: 1;
+}
+
+.date-year-v3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0F322B;
+}
+
+.date-status-v3 {
+  font-size: 12px;
+  font-weight: 700;
+  color: #F49E00;
+}
+
+/* INVOICES */
+.invoices-list-v3 {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.invoice-row-v3 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.inv-id-v3 {
+  font-size: 13px;
+  font-weight: 700;
+  display: block;
+}
+
+.inv-date-v3 {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.btn-dl-v3 {
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn-more-v3 {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #0F322B;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* ALL OFFERS SECTION */
+.bento-pricing-section-v3 {
+  margin-top: 60px;
+}
+
+.section-title-v3 {
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.pricing-grid-bento-v3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.pricing-bento-card {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.popular-v3 {
+  border: 2px solid #F49E00;
+}
+
+.current-v3 {
+  background: #f1f8f4;
+}
+
+.plan-header-v3 {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.plan-icon-box-v3 {
+  width: 48px;
+  height: 48px;
+  background: white;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0F322B;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.plan-header-v3 h3 {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.plan-header-v3 p {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.plan-features-v3 {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.plan-features-v3 li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.btn-plan-v3 {
+  width: 100%;
+  padding: 12px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btn-gold-v3 {
+  background: #F49E00;
+  color: #0F322B;
+  border: none;
+}
+
+.btn-outline-v3 {
+  background: white;
+  border: 2px solid #0F322B;
+  color: #0F322B;
+}
+
+@media (max-width: 1024px) {
+  .bento-grid-v3 {
+    grid-template-columns: 1fr;
+  }
+  .pricing-grid-bento-v3 {
+    grid-template-columns: 1fr;
+  }
+}
