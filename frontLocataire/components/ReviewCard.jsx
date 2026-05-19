@@ -39,11 +39,11 @@ const ReviewCard = ({ data, onValidate, onContest, showActions = true, status, o
           </View>
           <View style={styles.userInfo}>
             <Text style={styles.userName}>Coulibaly Sékou</Text>
-            <Text style={styles.userLocation}>Abidjan, Cocody</Text>
+            <Text style={styles.userLocation}>{data?.location || "Abidjan, Cocody"}</Text>
           </View>
           <View style={styles.dateInfo}>
             <Text style={styles.dateText}>{data?.date || "Mars 2024"}</Text>
-            <RatingStars rating={5} style={styles.ratingStars} />
+            <RatingStars rating={data?.rating || 5} style={styles.ratingStars} />
           </View>
         </View>
       )}
@@ -53,15 +53,15 @@ const ReviewCard = ({ data, onValidate, onContest, showActions = true, status, o
       <View style={styles.infoBienContainer}>
         <View style={styles.infoItem}>
           <Ionicons name="home-outline" size={14} color="#182C2A" />
-          <Text style={styles.infoItemText}>Duplex</Text>
+          <Text style={styles.infoItemText}>{data?.type || "Duplex"}</Text>
         </View>
         <View style={styles.infoItem}>
           <Ionicons name="location-outline" size={14} color="#182C2A" />
-          <Text style={styles.infoItemText}>Abidjan, Cocody</Text>
+          <Text style={styles.infoItemText}>{data?.location || "Abidjan, Cocody"}</Text>
         </View>
         <View style={styles.infoItem}>
           <Ionicons name="cash-outline" size={14} color="#182C2A" />
-          <Text style={styles.infoItemText}>15 000 000 FCFA</Text>
+          <Text style={styles.infoItemText}>{data?.price || "15 000 000 FCFA"}</Text>
         </View>
       </View>
 
@@ -69,8 +69,7 @@ const ReviewCard = ({ data, onValidate, onContest, showActions = true, status, o
       <Text style={styles.sectionLabel}>Commentaire</Text>
       <View style={styles.commentBox}>
         <Text style={styles.commentText}>
-          Bon locataire, il paye toujours son loyer à temps et ses voisins ne se sont jamais plaints de lui. 
-          En tout cas il n'y a rien à lui reprocher, c'est un excellent profil pour la plateforme.
+          {data?.comment || data?.text || "Bon locataire, il paye toujours son loyer à temps."}
         </Text>
       </View>
 

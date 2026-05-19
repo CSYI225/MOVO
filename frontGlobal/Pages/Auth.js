@@ -1,0 +1,332 @@
+import React, { useState } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  SafeAreaView, TextInput, StatusBar, Image,
+  KeyboardAvoidingView, Platform,
+} from 'react-native';
+import { Ionicons, Feather } from '@expo/vector-icons';
+import { fs } from '../Styles/global';
+import { useAuth } from '../context/AuthContext';
+
+export default function Auth() {
+  const { login } = useAuth();
+  const [view, setView] = useState('login'); // 'login' | 'register' | 'forgot'
+  const [role, setRole] = useState('landlord'); // 'landlord' | 'visitor'
+
+  // Login fields
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPwd, setShowLoginPwd] = useState(false);
+
+  // Register fields
+  const [regNom, setRegNom] = useState('');
+  const [regPrenom, setRegPrenom] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regConfirm, setRegConfirm] = useState('');
+  const [showRegPwd, setShowRegPwd] = useState(false);
+
+  // Forgot fields
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
+
+  const getInitials = (name) => {
+    const parts = name.trim().split(' ');
+    return parts.length >= 2
+      ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+      : name.slice(0, 2).toUpperCase();
+  };
+
+  const handleLogin = () => {
+    const name = loginEmail ? loginEmail.split('@')[0].replace('.', ' ') : 'Coulibaly Sékou';
+    login(role, name, loginEmail || 's.coulibaly@movo.ci');
+  };
+
+  const handleRegister = () => {
+    const name = `${regNom || 'Coulibaly'} ${regPrenom || 'Sékou'}`.trim();
+    login(role, name, regEmail || 's.coulibaly@movo.ci');
+  };
+
+  const handleForgot = () => setForgotSent(true);
+
+  const RoleSelector = () => (
+    <View style={styles.roleContainer}>
+      <Text style={styles.sectionLabel}>Je suis un :</Text>
+      <View style={styles.roleToggle}>
+        <TouchableOpacity
+          style={[styles.roleBtn, role === 'landlord' && styles.roleBtnLandlord]}
+          onPress={() => setRole('landlord')}
+          activeOpacity={0.8}
+        >
+          <Feather name="home" size={14} color={role === 'landlord' ? '#FFFFFF' : '#556A68'} style={{ marginRight: 6 }} />
+          <Text style={[styles.roleBtnText, role === 'landlord' && styles.roleBtnTextActive]}>Bailleur</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.roleBtn, role === 'visitor' && styles.roleBtnVisitor]}
+          onPress={() => setRole('visitor')}
+          activeOpacity={0.8}
+        >
+          <Feather name="eye" size={14} color={role === 'visitor' ? '#FFFFFF' : '#556A68'} style={{ marginRight: 6 }} />
+          <Text style={[styles.roleBtnText, role === 'visitor' && styles.roleBtnTextActive]}>Visiteur</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  const InputField = ({ label, icon, placeholder, value, onChange, secure, showToggle, onToggle, keyboardType, autoCapitalize }) => (
+    <View style={styles.inputGroup}>
+      <Text style={styles.sectionLabel}>{label}</Text>
+      <View style={styles.inputWrapper}>
+        {icon && <Feather name={icon} size={16} color="#7A8B89" style={styles.inputIcon} />}
+        <TextInput
+          style={[styles.input, { flex: 1 }]}
+          placeholder={placeholder}
+          placeholderTextColor="#AABAB8"
+          value={value}
+          onChangeText={onChange}
+          secureTextEntry={secure && !showToggle}
+          keyboardType={keyboardType || 'default'}
+          autoCapitalize={autoCapitalize || 'sentences'}
+        />
+        {secure && (
+          <TouchableOpacity onPress={onToggle} style={{ padding: 4 }}>
+            <Feather name={showToggle ? 'eye-off' : 'eye'} size={16} color="#7A8B89" />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+
+  const renderLogin = () => (
+    <>
+      <Text style={styles.formTitle}>Connexion</Text>
+      <Text style={styles.formSubtitle}>Accédez à votre espace Movo</Text>
+      <RoleSelector />
+      <InputField
+        label="Adresse e-mail" icon="mail" placeholder="exemple@email.com"
+        value={loginEmail} onChange={setLoginEmail}
+        keyboardType="email-address" autoCapitalize="none"
+      />
+      <InputField
+        label="Mot de passe" icon="lock" placeholder="Votre mot de passe"
+        value={loginPassword} onChange={setLoginPassword}
+        secure showToggle={showLoginPwd} onToggle={() => setShowLoginPwd(!showLoginPwd)}
+      />
+      <TouchableOpacity onPress={() => { setView('forgot'); setForgotSent(false); }} style={styles.forgotLink}>
+        <Text style={styles.forgotLinkText}>Mot de passe oublié ?</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.primaryBtn} onPress={handleLogin} activeOpacity={0.85}>
+        <Text style={styles.primaryBtnText}>Se connecter</Text>
+      </TouchableOpacity>
+      <View style={styles.switchRow}>
+        <Text style={styles.switchText}>Pas encore de compte ? </Text>
+        <TouchableOpacity onPress={() => setView('register')}>
+          <Text style={styles.switchLink}>Créer un compte</Text>
+        </TouchableOpacity>
+      </View>
+    </>
+  );
+
+  const renderRegister = () => (
+    <>
+      <Text style={styles.formTitle}>Inscription</Text>
+      <Text style={styles.formSubtitle}>Rejoignez la communauté Movo</Text>
+      <RoleSelector />
+      <View style={styles.rowInputs}>
+        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+          <Text style={styles.sectionLabel}>Nom</Text>
+          <View style={styles.inputWrapper}>
+            <TextInput style={[styles.input, { flex: 1 }]} placeholder="Dupont" placeholderTextColor="#AABAB8" value={regNom} onChangeText={setRegNom} />
+          </View>
+        </View>
+        <View style={[styles.inputGroup, { flex: 1 }]}>
+          <Text style={styles.sectionLabel}>Prénom</Text>
+          <View style={styles.inputWrapper}>
+            <TextInput style={[styles.input, { flex: 1 }]} placeholder="Jean" placeholderTextColor="#AABAB8" value={regPrenom} onChangeText={setRegPrenom} />
+          </View>
+        </View>
+      </View>
+      <InputField
+        label="Adresse e-mail" icon="mail" placeholder="exemple@email.com"
+        value={regEmail} onChange={setRegEmail} keyboardType="email-address" autoCapitalize="none"
+      />
+      <InputField
+        label="Mot de passe" icon="lock" placeholder="Minimum 8 caractères"
+        value={regPassword} onChange={setRegPassword}
+        secure showToggle={showRegPwd} onToggle={() => setShowRegPwd(!showRegPwd)}
+      />
+      <InputField
+        label="Confirmer le mot de passe" icon="lock" placeholder="Répétez votre mot de passe"
+        value={regConfirm} onChange={setRegConfirm} secure showToggle={false} onToggle={() => {}}
+      />
+      <TouchableOpacity style={styles.primaryBtn} onPress={handleRegister} activeOpacity={0.85}>
+        <Text style={styles.primaryBtnText}>Créer mon compte</Text>
+      </TouchableOpacity>
+      <View style={styles.switchRow}>
+        <Text style={styles.switchText}>Déjà un compte ? </Text>
+        <TouchableOpacity onPress={() => setView('login')}>
+          <Text style={styles.switchLink}>Se connecter</Text>
+        </TouchableOpacity>
+      </View>
+    </>
+  );
+
+  const renderForgot = () => (
+    <>
+      <TouchableOpacity onPress={() => setView('login')} style={styles.backBtn}>
+        <Ionicons name="arrow-back" size={20} color="#182C2A" />
+        <Text style={styles.backBtnText}>Retour à la connexion</Text>
+      </TouchableOpacity>
+      <Text style={styles.formTitle}>Mot de passe oublié</Text>
+      <Text style={styles.formSubtitle}>Un lien de réinitialisation vous sera envoyé par e-mail</Text>
+      {forgotSent ? (
+        <View style={styles.successCard}>
+          <View style={styles.successIconCircle}>
+            <Ionicons name="checkmark-circle" size={52} color="#4CAF50" />
+          </View>
+          <Text style={styles.successTitle}>Lien envoyé !</Text>
+          <Text style={styles.successSubtitle}>
+            Vérifiez votre boîte mail à l'adresse{'\n'}
+            <Text style={{ fontWeight: '800', color: '#182C2A' }}>{forgotEmail || 'votre adresse e-mail'}</Text>
+          </Text>
+          <TouchableOpacity style={[styles.primaryBtn, { marginTop: 24 }]} onPress={() => setView('login')}>
+            <Text style={styles.primaryBtnText}>Retour à la connexion</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          <InputField
+            label="Adresse e-mail" icon="mail" placeholder="exemple@email.com"
+            value={forgotEmail} onChange={setForgotEmail} keyboardType="email-address" autoCapitalize="none"
+          />
+          <TouchableOpacity style={styles.primaryBtn} onPress={handleForgot} activeOpacity={0.85}>
+            <Text style={styles.primaryBtnText}>Envoyer le lien</Text>
+          </TouchableOpacity>
+        </>
+      )}
+    </>
+  );
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Logo Header */}
+          <View style={styles.logoSection}>
+            <Image source={require('../assets/images/logo.png')} style={styles.logo} />
+            <Text style={styles.tagline}>La plateforme de référence des bailleurs</Text>
+          </View>
+
+          {/* Decorative dots */}
+          <View style={styles.dotsRow}>
+            {['#4CAF50', '#C9E84F', '#F59A23'].map((c, i) => (
+              <View key={i} style={[styles.dot, { backgroundColor: c }]} />
+            ))}
+          </View>
+
+          {/* Form Card */}
+          <View style={styles.card}>
+            {view === 'login' && renderLogin()}
+            {view === 'register' && renderRegister()}
+            {view === 'forgot' && renderForgot()}
+          </View>
+
+          <Text style={styles.footerText}>
+            En utilisant Movo, vous acceptez nos{' '}
+            <Text style={styles.footerLink}>Conditions d'utilisation</Text>
+            {' '}et notre{' '}
+            <Text style={styles.footerLink}>Politique de confidentialité</Text>
+          </Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#FAFBFB' },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 40, paddingBottom: 40 },
+
+  // Logo
+  logoSection: { alignItems: 'center', marginBottom: 20 },
+  logo: { width: 130, height: 52, resizeMode: 'contain', marginBottom: 8 },
+  tagline: { fontSize: fs(12), color: '#7A8B89', fontWeight: '500', textAlign: 'center' },
+
+  // Decorative dots
+  dotsRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 24 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+
+  // Card
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: '#182C2A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+
+  formTitle: { fontSize: fs(22), fontWeight: '800', color: '#182C2A', marginBottom: 4 },
+  formSubtitle: { fontSize: fs(13), color: '#7A8B89', fontWeight: '500', marginBottom: 24, lineHeight: 18 },
+
+  // Role selector
+  roleContainer: { marginBottom: 20 },
+  roleToggle: { flexDirection: 'row', backgroundColor: '#F5F7F7', borderRadius: 12, padding: 4, gap: 4 },
+  roleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 11, borderRadius: 9 },
+  roleBtnLandlord: { backgroundColor: '#182C2A' },
+  roleBtnVisitor: { backgroundColor: '#F59A23' },
+  roleBtnText: { fontSize: fs(13), fontWeight: '700', color: '#556A68' },
+  roleBtnTextActive: { color: '#FFFFFF' },
+
+  // Inputs
+  sectionLabel: { fontSize: fs(11), fontWeight: '700', color: '#7A8B89', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.6 },
+  inputGroup: { marginBottom: 16 },
+  inputWrapper: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#FAFBFB', borderWidth: 1.5, borderColor: '#E2E8F0',
+    borderRadius: 12, paddingHorizontal: 14, height: 52,
+  },
+  inputIcon: { marginRight: 10 },
+  input: { fontSize: fs(14), color: '#182C2A', fontWeight: '500' },
+  rowInputs: { flexDirection: 'row' },
+
+  // Forgot link
+  forgotLink: { alignSelf: 'flex-end', marginBottom: 20, marginTop: -4 },
+  forgotLinkText: { fontSize: fs(13), color: '#4CAF50', fontWeight: '700' },
+
+  // Primary button
+  primaryBtn: {
+    backgroundColor: '#182C2A', borderRadius: 14,
+    paddingVertical: 16, alignItems: 'center', marginBottom: 16,
+  },
+  primaryBtnText: { color: '#FFFFFF', fontSize: fs(15), fontWeight: '800' },
+
+  // Switch
+  switchRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  switchText: { fontSize: fs(13), color: '#7A8B89', fontWeight: '500' },
+  switchLink: { fontSize: fs(13), color: '#4CAF50', fontWeight: '700' },
+
+  // Back button
+  backBtn: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  backBtnText: { fontSize: fs(13), fontWeight: '700', color: '#182C2A', marginLeft: 8 },
+
+  // Success
+  successCard: { alignItems: 'center', paddingVertical: 16 },
+  successIconCircle: { marginBottom: 16 },
+  successTitle: { fontSize: fs(20), fontWeight: '800', color: '#182C2A', marginBottom: 8 },
+  successSubtitle: { fontSize: fs(13), color: '#7A8B89', textAlign: 'center', lineHeight: 20 },
+
+  // Footer
+  footerText: { fontSize: fs(11), color: '#AABAB8', textAlign: 'center', lineHeight: 17 },
+  footerLink: { color: '#4CAF50', fontWeight: '700' },
+});

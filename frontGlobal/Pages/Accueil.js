@@ -15,6 +15,7 @@ import {
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { COLORS, SIZES, fs } from '../Styles/global';
 import UserAvatar from '../components/UserAvatar';
+import { useAuth } from '../context/AuthContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SLIDE_WIDTH = SCREEN_WIDTH - 48; // Slides leave 24px margin on both sides
@@ -71,6 +72,18 @@ const CAROUSEL_TIPS = [
 ];
 
 export default function Accueil({ navigation }) {
+  const { user, getTenantScore, reviewsByUser } = useAuth();
+  const isVisitor = user?.role === 'visitor';
+
+  // Compute initials from user name
+  const getInitials = (name = '') => {
+    const parts = name.trim().split(' ');
+    return parts.length >= 2
+      ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+      : (name.slice(0, 2) || 'CS').toUpperCase();
+  };
+  const userInitials = getInitials(user?.name || 'Coulibaly Sékou');
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSlide, setActiveSlide] = useState(0);
   const carouselScrollRef = useRef(null);
@@ -98,8 +111,15 @@ export default function Accueil({ navigation }) {
     }
   };
 
+  // Enrich users with dynamic ratings and review counts from the context
+  const dynamicUsers = DUMMY_USERS.map(u => ({
+    ...u,
+    rating: getTenantScore(u.id),
+    reviewCount: reviewsByUser[u.id]?.length || 0
+  }));
+
   // Filter users based on search
-  const filteredUsers = DUMMY_USERS.filter(user => 
+  const filteredUsers = dynamicUsers.filter(user => 
     user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.location.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -127,12 +147,22 @@ export default function Accueil({ navigation }) {
             <View style={styles.bellBadge} />
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.profileAvatarCircle}
-            onPress={() => navigation.navigate('Profil')}
-          >
-            <Text style={styles.profileAvatarText}>CS</Text>
-          </TouchableOpacity>
+          {isVisitor ? (
+            <TouchableOpacity
+              style={styles.visitorBadge}
+              onPress={() => navigation.navigate('Profil')}
+            >
+              <Feather name="eye" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
+              <Text style={styles.visitorBadgeText}>Visiteur</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.profileAvatarCircle}
+              onPress={() => navigation.navigate('Profil')}
+            >
+              <Text style={styles.profileAvatarText}>{userInitials}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -394,6 +424,19 @@ const styles = StyleSheet.create({
     fontSize: fs(12),
     fontWeight: 'bold',
     color: '#182C2A',
+  },
+  visitorBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F59A23',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  visitorBadgeText: {
+    fontSize: fs(11),
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 
   // --- SEARCH BAR ---

@@ -24,15 +24,15 @@ export default function DetailsAvis({ route, navigation }) {
     <View style={styles.infoBienContent}>
       <View style={styles.infoItem}>
         <Ionicons name="home-outline" size={18} color="#182C2A" />
-        <Text style={styles.infoText}>Duplex</Text>
+        <Text style={styles.infoText}>{review?.type || "Duplex"}</Text>
       </View>
       <View style={styles.infoItem}>
         <Ionicons name="location-outline" size={18} color="#182C2A" />
-        <Text style={styles.infoText}>Abidjan, Cocody</Text>
+        <Text style={styles.infoText}>{review?.location || "Abidjan, Cocody"}</Text>
       </View>
       <View style={styles.infoItem}>
         <Ionicons name="cash-outline" size={18} color="#182C2A" />
-        <Text style={styles.infoText}>15 000 000 FCFA</Text>
+        <Text style={styles.infoText}>{review?.price || "15 000 000 FCFA"}</Text>
       </View>
     </View>
   );
@@ -65,15 +65,14 @@ export default function DetailsAvis({ route, navigation }) {
         <UserAvatar initials="CS" size={40} color="#C9E84F" textColor="#182C2A" />
         <View style={styles.locataireInfo}>
           <Text style={styles.locataireName}>Coulibaly Sékou</Text>
-          <RatingStars rating={5} />
+          <RatingStars rating={review?.rating || 5} />
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Note</Text>
       <View style={styles.noteContainer}>
         <View style={styles.squaresRow}>
           {[1, 2, 3, 4, 5].map((starIndex) => {
-            const isFilled = starIndex <= 5;
+            const isFilled = starIndex <= (review?.rating || 5);
             return (
               <View
                 key={starIndex}
@@ -87,7 +86,7 @@ export default function DetailsAvis({ route, navigation }) {
             );
           })}
         </View>
-        <Text style={styles.noteText}>5 sur 5 - Excellent</Text>
+        <Text style={styles.noteText}>{review?.rating || 5} sur 5 - {review?.rating >= 4 ? 'Excellent' : 'Correct'}</Text>
       </View>
 
       {/* Corrected Relation Section showing all three options */}
@@ -121,8 +120,7 @@ export default function DetailsAvis({ route, navigation }) {
       <Text style={styles.sectionTitle}>Commentaire</Text>
       <View style={styles.whiteBox}>
         <Text style={styles.commentText}>
-          Bon locataire, il paye toujours son loyer à temps et ses voisins ne se sont jamais plaints de lui. 
-          En tout cas il n'y a rien à lui reprocher, c'est un excellent profil pour la plateforme.
+          {review?.text || review?.comment || "Aucun commentaire."}
         </Text>
       </View>
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Modal, TextInput, Image, StatusBar, Dimensions } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { COLORS, SIZES, globalStyles, fs } from '../Styles/global';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -63,28 +64,153 @@ const PLANS = [
   }
 ];
 
+// ── Plans Visiteur ───────────────────────────────────────
+const VISITOR_PLANS = [
+  {
+    id: 'ponctuel',
+    name: 'Accès Ponctuel',
+    price: '500 FCFA',
+    period: 'par achat',
+    credits: 3,
+    description: 'Consultez 3 profils complets. Renouvelable à volonté.',
+    features: [
+      'Accès à 3 profils locataires complets',
+      'Historique de location visible',
+      'Avis propriétaires débloqués',
+      'Valable sans limite de temps',
+    ],
+    icon: 'flash',
+    iconColor: '#F59A23',
+    iconBg: '#FFF8E1',
+    buttonText: 'Acheter',
+    action: 'ponctuel',
+  },
+  {
+    id: 'week',
+    name: 'Premium Semaine',
+    price: '3 500 FCFA',
+    period: 'par semaine',
+    description: 'Accès illimité à tous les profils pendant 7 jours.',
+    features: [
+      'Profils illimités pendant 7 jours',
+      'Résultats de recherche complets',
+      'Historique & avis sans restriction',
+      'Badge « Visiteur Premium »',
+    ],
+    popular: false,
+    icon: 'calendar',
+    iconColor: '#4CAF50',
+    iconBg: '#E8F5E9',
+    buttonText: 'S\'abonner',
+    action: 'week',
+  },
+  {
+    id: 'month',
+    name: 'Premium Mois',
+    price: '10 000 FCFA',
+    period: 'par mois',
+    description: 'Accès illimité à tous les profils pendant 30 jours.',
+    features: [
+      'Profils illimités pendant 30 jours',
+      'Résultats de recherche complets',
+      'Historique & avis sans restriction',
+      'Badge « Visiteur Premium »',
+    ],
+    popular: true,
+    icon: 'calendar',
+    iconColor: '#4CAF50',
+    iconBg: '#E8F5E9',
+    buttonText: 'S\'abonner',
+    action: 'month',
+  },
+  {
+    id: 'year',
+    name: 'Premium Année',
+    price: '80 000 FCFA',
+    period: 'par an',
+    description: 'Le meilleur rapport qualité/prix — 365 jours d\'accès.',
+    features: [
+      'Profils illimités pendant 365 jours',
+      'Résultats de recherche complets',
+      'Historique & avis sans restriction',
+      'Badge « Visiteur Premium »',
+      'Économisez 40 000 FCFA vs mensuel',
+    ],
+    icon: 'star',
+    iconColor: '#4CAF50',
+    iconBg: '#E8F5E9',
+    buttonText: 'S\'abonner',
+    action: 'year',
+  },
+];
+
 export default function Abonnement({ navigation }) {
+  const { user, purchaseAccess, subscribe, hasActiveSubscription } = useAuth();
+  const isVisitor = user?.role === 'visitor';
+  const [pendingAction, setPendingAction] = useState(null);
+
   const [selectedPlan, setSelectedPlan] = useState('pro');
   const [modalVisible, setModalVisible] = useState(false);
   const [modalState, setModalState] = useState('payment'); // 'payment' | 'success'
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedNetwork, setSelectedNetwork] = useState('orange');
 
-  const currentStatus = {
-    planName: 'Starter',
-    status: 'Actif',
-    startDate: '12 Janvier 2024',
-    nextBilling: 'Gratuit à vie',
-    usage: [
-      { label: 'Biens Immobiliers', current: 1, limit: 1, color: '#182C2A' },
-      { label: 'Locataires Gérés', current: 3, limit: 3, color: '#F59A23' },
-      { label: 'Rapports Mensuels', current: 2, limit: 5, color: '#4CAF50' }
-    ],
-    recentInvoices: [
-      { id: 'INV-2024-001', date: '01 Mai 2024', amount: '0 FCFA', status: 'Payé' },
-      { id: 'INV-2024-002', date: '01 Avril 2024', amount: '0 FCFA', status: 'Payé' }
-    ]
-  };
+  // Données dynamiques de l'abonnement
+  let currentStatus = {};
+  if (isVisitor) {
+    const activeSub = hasActiveSubscription();
+    let planName = 'Gratuit';
+    let status = 'Gratuit';
+    let nextBilling = '-';
+    let price = '0 FCFA';
+    let period = '';
+    let usage = [];
+    
+    if (activeSub) {
+      planName = `Premium ${user.subscription.plan}`;
+      status = 'Actif';
+      nextBilling = new Date(user.subscription.expiresAt).toLocaleDateString('fr-FR');
+      price = VISITOR_PLANS.find(p => p.action === user.subscription.plan)?.price || '0 FCFA';
+      period = VISITOR_PLANS.find(p => p.action === user.subscription.plan)?.period || '';
+      usage = [{ label: 'Profils Illimités', current: '∞', limit: '∞', color: '#4CAF50' }];
+    } else if (user?.accessCredits > 0) {
+      planName = 'Accès Ponctuel';
+      status = 'Crédité';
+      nextBilling = 'Sans limite de temps';
+      price = '500 FCFA';
+      period = 'par achat';
+      usage = [{ label: 'Crédits profils restants', current: user.accessCredits, limit: user.totalPurchasedCredits || 3, color: '#F59A23' }];
+    } else {
+      usage = [{ label: 'Profils Locataires', current: 0, limit: 0, color: '#182C2A' }];
+    }
+
+    currentStatus = {
+      planName,
+      status,
+      price,
+      period,
+      startDate: activeSub ? new Date(user.subscription.startDate).toLocaleDateString('fr-FR') : '-',
+      nextBilling,
+      usage,
+      recentInvoices: user?.invoices || []
+    };
+  } else {
+    // Mode Bailleur
+    currentStatus = {
+      planName: 'Starter',
+      status: 'Actif',
+      price: '0 FCFA',
+      period: 'à vie',
+      startDate: '12 Janvier 2024',
+      nextBilling: 'Gratuit à vie',
+      usage: [
+        { label: 'Biens Immobiliers', current: 1, limit: 1, color: '#182C2A' },
+        { label: 'Locataires Gérés', current: 3, limit: 3, color: '#F59A23' },
+        { label: 'Rapports Mensuels', current: 2, limit: 5, color: '#4CAF50' }
+      ],
+      recentInvoices: user?.invoices || []
+    };
+  }
 
   const handleSelectPlan = (planId) => {
     setSelectedPlan(planId);
@@ -95,6 +221,18 @@ export default function Abonnement({ navigation }) {
   };
 
   const handleConfirmPayment = () => {
+    // Appliquer la logique d'achat selon le plan sélectionné
+    const activePlans = isVisitor ? VISITOR_PLANS : PLANS;
+    const plan = activePlans.find(p => p.id === selectedPlan);
+    
+    if (plan) {
+      if (plan.action === 'ponctuel') {
+        purchaseAccess(plan.price, plan.name);
+      } else if (['week', 'month', 'year'].includes(plan.action)) {
+        subscribe(plan.action, plan.price, plan.name);
+      }
+    }
+
     setTimeout(() => {
       setModalState('success');
     }, 1000);
@@ -105,7 +243,8 @@ export default function Abonnement({ navigation }) {
   };
 
   const getSelectedPlanDetails = () => {
-    return PLANS.find(p => p.id === selectedPlan) || PLANS[1];
+    const activePlans = isVisitor ? VISITOR_PLANS : PLANS;
+    return activePlans.find(p => p.id === selectedPlan) || activePlans[1] || activePlans[0];
   };
 
   return (
@@ -138,9 +277,20 @@ export default function Abonnement({ navigation }) {
             <Text style={styles.bentoHeaderSub}>Vue d'ensemble de vos services</Text>
           </View>
           <View style={styles.bentoHeaderRight}>
-            <View style={styles.statusBadge}>
-              <View style={styles.dotGreen} />
-              <Text style={styles.statusBadgeText}>Plan {currentStatus.planName} Actif</Text>
+            <View style={[styles.statusBadge, 
+              currentStatus.status === 'Gratuit' ? {backgroundColor: '#F2F4F4'} : 
+              currentStatus.status === 'Crédité' ? {backgroundColor: '#FFF8E1'} : {}
+            ]}>
+              <View style={[styles.dotGreen, 
+                currentStatus.status === 'Gratuit' ? {backgroundColor: '#7A8B89'} : 
+                currentStatus.status === 'Crédité' ? {backgroundColor: '#F59A23'} : {}
+              ]} />
+              <Text style={[styles.statusBadgeText, 
+                currentStatus.status === 'Gratuit' ? {color: '#7A8B89'} : 
+                currentStatus.status === 'Crédité' ? {color: '#F59A23'} : {}
+              ]}>
+                {isVisitor ? currentStatus.status : `Plan ${currentStatus.planName} Actif`}
+              </Text>
             </View>
           </View>
         </View>
@@ -154,7 +304,6 @@ export default function Abonnement({ navigation }) {
           
           <View style={styles.planDisplayRow}>
             <Text style={styles.planDisplayName}>{currentStatus.planName}</Text>
-            <Text style={styles.planDisplayPrice}>0 FCFA <Text style={styles.planDisplayPricePeriod}>/ mois</Text></Text>
           </View>
 
           <View style={styles.metaDivider} />
@@ -200,56 +349,38 @@ export default function Abonnement({ navigation }) {
           </View>
         </View>
 
-        {/* TWO-COLUMN BENTO ROW FOR CALENDAR & INVOICES */}
-        <View style={styles.doubleBentoRow}>
-          
-          {/* NEXT BILLING CALENDAR STYLE */}
-          <View style={[styles.bentoCardMini, { marginRight: 12 }]}>
-            <Text style={styles.miniCardTitle}>Prélèvement</Text>
-            <View style={styles.calendarBlock}>
-              <View style={styles.calendarMonth}>
-                <Text style={styles.calendarMonthText}>MAI</Text>
-              </View>
-              <View style={styles.calendarDay}>
-                <Text style={styles.calendarDayText}>15</Text>
-              </View>
-              <View style={styles.calendarYear}>
-                <Text style={styles.calendarYearText}>2024</Text>
-              </View>
-            </View>
-            <Text style={styles.calendarStatusText}>En attente</Text>
-          </View>
-
           {/* INVOICES CARD */}
-          <View style={styles.bentoCardMini}>
-            <View style={styles.miniHeaderRow}>
-              <Text style={styles.miniCardTitle}>Factures</Text>
-              <Feather name="clock" size={12} color="#7A8B89" />
+          <View style={styles.bentoCard}>
+            <View style={styles.cardHeaderTitleRow}>
+              <Feather name="file-text" size={18} color="#182C2A" style={{ marginRight: 8 }} />
+              <Text style={styles.cardTitle}>Factures & Reçus</Text>
             </View>
             
             <View style={styles.miniInvoicesList}>
-              {currentStatus.recentInvoices.map((inv, i) => (
-                <View key={i} style={styles.invoiceItemMini}>
+              {currentStatus.recentInvoices.length > 0 ? currentStatus.recentInvoices.map((inv, i) => (
+                <View key={i} style={[styles.invoiceItemMini, { marginBottom: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F2F4F4' }]}>
                   <View style={styles.invoiceItemLeft}>
                     <Text style={styles.invoiceIdText}>{inv.id}</Text>
-                    <Text style={styles.invoiceDateText}>{inv.date}</Text>
+                    <Text style={styles.invoiceDateText}>{inv.date} - {inv.planName}</Text>
                   </View>
-                  <TouchableOpacity style={styles.invoiceDlBtn}>
-                    <Feather name="download" size={11} color="#182C2A" />
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={{ fontSize: fs(13), fontWeight: '700', color: '#4CAF50', marginRight: 12 }}>{inv.amount}</Text>
+                    <TouchableOpacity style={styles.invoiceDlBtn}>
+                      <Feather name="download" size={14} color="#182C2A" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              ))}
+              )) : (
+                <Text style={{ color: '#7A8B89', fontSize: fs(13), textAlign: 'center', marginTop: 10 }}>Aucune facture disponible pour le moment.</Text>
+              )}
             </View>
           </View>
 
-        </View>
-
-        {/* BOTTOM PRICING GRID ("TOUTES LES OFFRES") */}
         <View style={styles.pricingSectionHeader}>
           <Text style={styles.pricingSectionTitle}>Toutes les offres</Text>
         </View>
 
-        {PLANS.map((plan) => {
+        {(isVisitor ? VISITOR_PLANS : PLANS).map((plan) => {
           const isCurrent = plan.current;
           return (
             <View 

@@ -1,17 +1,58 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image, StatusBar, TextInput } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { COLORS, SIZES, globalStyles, fs } from '../Styles/global';
 import UserAvatar from '../components/UserAvatar';
 import RatingStars from '../components/RatingStars';
+import { useAuth } from '../context/AuthContext';
 
 export default function Profil({ navigation }) {
+  const { user, logout, hasActiveSubscription } = useAuth();
+  const isVisitor = user?.role === 'visitor';
+
+  // Initiales dynamiques : Première lettre du Nom + Première lettre du 1er Prénom
+  const getInitials = (fullName) => {
+    if (!fullName) return 'V';
+    const parts = fullName.trim().split(' ').filter(p => p.length > 0);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0] ? parts[0].slice(0, 2).toUpperCase() : 'V';
+  };
+  const initials = getInitials(user?.name);
+  
+  // Extraire Nom et Prénoms (la première partie est le nom, le reste est le prénom)
+  const nameParts = user?.name ? user.name.trim().split(' ') : [];
+  const firstName = nameParts.length > 0 ? nameParts[0] : '';
+  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
   const [isEditing, setIsEditing] = useState(false);
-  const [nom, setNom] = useState('Coulibaly');
-  const [prenoms, setPrenoms] = useState('Sékou Yéfougn-gnigui');
-  const [email, setEmail] = useState('s.coulibaly@movo.ci');
+  const [nom, setNom] = useState(firstName);
+  const [prenoms, setPrenoms] = useState(lastName);
+  const [email, setEmail] = useState(user?.email || '');
+
+  useEffect(() => {
+    if (user?.name) {
+      const parts = user.name.trim().split(' ');
+      setNom(parts[0] || '');
+      setPrenoms(parts.slice(1).join(' '));
+    }
+    if (user?.email) {
+      setEmail(user.email);
+    }
+  }, [user]);
   const [phone, setPhone] = useState('+225 07 08 09 10 11');
   const [password, setPassword] = useState('password123');
+
+  // Infos abonnement visiteur
+  const activeSub = hasActiveSubscription();
+  const planLabels = { week: 'Semaine', month: 'Mois', year: 'Année' };
+  const visitorPlanLabel = activeSub
+    ? `Premium Visiteur — ${planLabels[user?.subscription?.plan] || ''}`
+    : (user?.accessCredits > 0)
+      ? `${user.accessCredits} crédit(s) restant(s)`
+      : 'Gratuit';
+  const visitorStatus = activeSub ? 'Actif' : (user?.accessCredits > 0 ? 'Crédité' : 'Gratuit');
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -38,19 +79,29 @@ export default function Profil({ navigation }) {
         
         {/* User Info Header */}
         <View style={styles.userInfoSection}>
-          <UserAvatar initials="CS" size={72} color="#E8F5E9" textColor="#4CAF50" />
-          
+          <UserAvatar
+            initials={initials}
+            size={72}
+            color={isVisitor ? '#FFF8E1' : '#E8F5E9'}
+            textColor={isVisitor ? '#F59A23' : '#4CAF50'}
+          />
+
           <View style={styles.userNameSection}>
-            <Text style={styles.userName}>Coulibaly Sékou</Text>
-            <View style={styles.badgeBailleur}>
-              <Text style={styles.badgeBailleurText}>Bailleur Pro</Text>
+            <Text style={styles.userName}>{user?.name || 'Coulibaly Sékou'}</Text>
+            <View style={[styles.badgeBailleur, isVisitor && styles.badgeVisiteur]}>
+              <Text style={[styles.badgeBailleurText, isVisitor && styles.badgeVisiteurText]}>
+                {isVisitor ? 'Visiteur' : 'Bailleur Pro'}
+              </Text>
             </View>
           </View>
-          
-          <View style={styles.ratingSection}>
-            <Text style={styles.ratingBigText}>4,7</Text>
-            <RatingStars rating={4.7} />
-          </View>
+
+          {/* Rating uniquement pour les bailleurs */}
+          {!isVisitor && (
+            <View style={styles.ratingSection}>
+              <Text style={styles.ratingBigText}>4,7</Text>
+              <RatingStars rating={4.7} />
+            </View>
+          )}
         </View>
 
         {/* Abonnement Card (White, border, clickable) */}
@@ -69,27 +120,48 @@ export default function Profil({ navigation }) {
           
           <View style={styles.cardRow}>
             <Text style={styles.rowLabel}>Statut</Text>
-            <View style={styles.greenBadge}>
-              <Text style={styles.greenBadgeText}>Actif</Text>
+            <View style={[styles.greenBadge, !activeSub && !isVisitor && styles.greenBadge,
+              (visitorStatus === 'Gratuit') && styles.grayBadge,
+              (visitorStatus === 'Crédité') && styles.orangeBadge,
+            ]}>
+              <Text style={[
+                styles.greenBadgeText,
+                (visitorStatus === 'Gratuit') && styles.grayBadgeText,
+                (visitorStatus === 'Crédité') && styles.orangeBadgeText,
+              ]}>
+                {isVisitor ? visitorStatus : 'Actif'}
+              </Text>
             </View>
-          </View>
-          
-          <View style={styles.cardRow}>
-            <Text style={styles.rowLabel}>Type d'abonnement</Text>
-            <Text style={styles.rowValue}>Starter (Gratuit)</Text>
           </View>
 
           <View style={styles.cardRow}>
-            <Text style={styles.rowLabel}>Depuis le</Text>
-            <Text style={styles.rowValue}>12 Janvier 2024</Text>
+            <Text style={styles.rowLabel}>{isVisitor ? 'Accès' : 'Type d\'abonnement'}</Text>
+            <Text style={styles.rowValue}>{isVisitor ? visitorPlanLabel : 'Starter (Gratuit)'}</Text>
           </View>
 
-          <View style={styles.cardRow}>
-            <Text style={styles.rowLabel}>Validité</Text>
-            <View style={styles.timeRemainingBadge}>
-              <Text style={styles.timeRemainingBadgeText}>Gratuit à vie</Text>
+          {!isVisitor && (
+            <>
+              <View style={styles.cardRow}>
+                <Text style={styles.rowLabel}>Depuis le</Text>
+                <Text style={styles.rowValue}>12 Janvier 2024</Text>
+              </View>
+              <View style={styles.cardRow}>
+                <Text style={styles.rowLabel}>Validité</Text>
+                <View style={styles.timeRemainingBadge}>
+                  <Text style={styles.timeRemainingBadgeText}>Gratuit à vie</Text>
+                </View>
+              </View>
+            </>
+          )}
+
+          {isVisitor && activeSub && (
+            <View style={styles.cardRow}>
+              <Text style={styles.rowLabel}>Expire le</Text>
+              <Text style={styles.rowValue}>
+                {new Date(user.subscription.expiresAt).toLocaleDateString('fr-FR')}
+              </Text>
             </View>
-          </View>
+          )}
         </TouchableOpacity>
 
         {/* Compte Card (White, border, interactive) */}
@@ -204,7 +276,10 @@ export default function Profil({ navigation }) {
         </View>
 
         {/* Déconnexion Button */}
-        <TouchableOpacity style={styles.logoutButton}>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={() => { logout(); }}
+        >
           <Text style={styles.logoutButtonText}>Déconnexion</Text>
         </TouchableOpacity>
 
@@ -280,6 +355,18 @@ const styles = StyleSheet.create({
   },
   badgeBailleurText: {
     color: '#4CAF50',
+    fontWeight: '800',
+    fontSize: fs(11),
+  },
+  badgeVisiteur: {
+    backgroundColor: '#FFF8E1',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  badgeVisiteurText: {
+    color: '#F59A23',
     fontWeight: '800',
     fontSize: fs(11),
   },
@@ -364,6 +451,28 @@ const styles = StyleSheet.create({
   },
   greenBadgeText: {
     color: '#4CAF50',
+    fontWeight: '800',
+    fontSize: fs(11),
+  },
+  grayBadge: {
+    backgroundColor: '#F2F4F4',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  grayBadgeText: {
+    color: '#7A8B89',
+    fontWeight: '800',
+    fontSize: fs(11),
+  },
+  orangeBadge: {
+    backgroundColor: '#FFF8E1',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  orangeBadgeText: {
+    color: '#F59A23',
     fontWeight: '800',
     fontSize: fs(11),
   },

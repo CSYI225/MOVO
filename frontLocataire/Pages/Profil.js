@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import Header from '../components/Header';
 import { COLORS, fs } from '../Styles/global';
 import UserAvatar from '../components/UserAvatar';
 import RatingStars from '../components/RatingStars';
+import { useAuth } from '../context/AuthContext';
 
 export default function Profil({ navigation }) {
+  const { logout, getTenantScore } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [nom, setNom] = useState('Coulibaly');
   const [prenoms, setPrenoms] = useState('Sékou Yéfougn-gnigui');
+  const tenantScore = getTenantScore();
 
   return (
     <View style={styles.container}>
@@ -30,9 +33,18 @@ export default function Profil({ navigation }) {
             </View>
           </View>
           <View style={styles.ratingBox}>
-            <Text style={styles.ratingText}>5.0</Text>
-            <RatingStars rating={5} />
+            <Text style={styles.ratingText}>{tenantScore.toFixed(1).replace('.', ',')}</Text>
+            <RatingStars rating={tenantScore} />
           </View>
+          
+          <TouchableOpacity 
+            style={styles.publicViewBtn}
+            onPress={() => navigation.navigate('ProfilPublic')}
+            activeOpacity={0.8}
+          >
+            <Feather name="eye" size={16} color="#182C2A" style={{ marginRight: 8 }} />
+            <Text style={styles.publicViewBtnText}>Aperçu du profil public</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Compte Section */}
@@ -115,11 +127,10 @@ export default function Profil({ navigation }) {
             <Text style={styles.rowValue}>15 000 000 FCFA</Text>
           </View>
         </View>
-
         {/* Déconnexion */}
-        <TouchableOpacity style={styles.logoutButton} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.logoutButton} activeOpacity={0.7} onPress={logout}>
           <Ionicons name="log-out-outline" size={20} color="#FF5252" style={styles.logoutIcon} />
-          <Text style={styles.logoutText}>Déconnexion du compte</Text>
+          <Text style={styles.logoutText}>Se déconnecter</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -136,7 +147,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   profileHeader: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     marginBottom: 24,
     marginTop: 10,
@@ -147,8 +158,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   profileMainInfo: {
-    flex: 1,
-    marginLeft: 12,
+    alignItems: 'center',
+    marginVertical: 12,
   },
   profileName: {
     fontSize: fs(18),
@@ -160,7 +171,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
-    alignSelf: 'flex-start',
     marginTop: 6,
   },
   labelLocataireText: {
@@ -176,6 +186,22 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#0F322B',
     marginBottom: 2,
+  },
+  publicViewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F7F7',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  publicViewBtnText: {
+    fontSize: fs(13),
+    fontWeight: '700',
+    color: '#182C2A',
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -266,5 +292,33 @@ const styles = StyleSheet.create({
     color: '#FF5252',
     fontWeight: '700',
     fontSize: fs(14),
+  },
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  navRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  navRowTitle: {
+    fontSize: fs(14),
+    fontWeight: '700',
+    color: '#182C2A',
+  },
+  navRowSubtitle: {
+    fontSize: fs(12),
+    color: '#F59A23',
+    marginTop: 2,
   }
 });

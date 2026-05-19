@@ -7,7 +7,8 @@ import {
   ExternalLink, MapPin, CheckCircle,
   AlertTriangle, Home, DollarSign
 } from 'lucide-react';
-import { tenants, properties, allPlatformUsers, reports } from '../../data/mockData';
+import { allPlatformUsers } from '../../data/mockData';
+import { useAuth } from '../../context/AuthContext';
 import ReportModal from '../../components/Modals/ReportModal';
 import ReportDetailModal from '../../components/Modals/ReportDetailModal';
 import './Locataires.css';
@@ -15,6 +16,7 @@ import './Locataires.css';
 const LocataireDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { tenants, properties, reports, addReport, updateReport, setTenants, setProperties, getTenantScore } = useAuth();
   const [isReportModalOpen, setIsReportModalOpen] = React.useState(false);
   const [isVacateModalOpen, setIsVacateModalOpen] = React.useState(false);
   const [departureDate, setDepartureDate] = React.useState(new Date().toISOString().split('T')[0]);
@@ -92,7 +94,7 @@ const LocataireDetail = () => {
             <span className="label">Note globale</span>
             <div className="rating-large">
               <Star size={24} fill="#F59E0B" color="#F59E0B" />
-              <span>{tenant.rating || '4.8'}</span>
+              <span>{getTenantScore(tenant.id)}</span>
             </div>
           </div>
         </div>
@@ -189,31 +191,17 @@ const LocataireDetail = () => {
           const isEdit = reports.some(r => r.id === reportData.id);
           
           if (!isEdit) {
-            if (!tenant.reports) tenant.reports = [];
-            tenant.reports.unshift(reportData);
-            reports.unshift(reportData);
+            addReport(reportData);
           } else {
-            // Already updated in place, but let's sync
-            const rIdx = reports.findIndex(r => r.id === reportData.id);
-            if (rIdx > -1) reports[rIdx] = reportData;
-            
-            if (!tenant.reports) tenant.reports = [];
-            const trIdx = tenant.reports.findIndex(r => r.id === reportData.id);
-            if (trIdx > -1) {
-              tenant.reports[trIdx] = reportData;
-            } else {
-              tenant.reports.unshift(reportData);
-            }
+            updateReport(reportData);
           }
 
           if (isPendingVacate && currentProperty) {
             // Build history entry with departure date
-            if (!tenant.history) tenant.history = [];
-            
             const startYear = tenant.occupancyDate ? tenant.occupancyDate : '2023-01-01';
             const endYear = departureDate;
             
-            tenant.history.unshift({
+            const newHistoryItem = {
               id: Date.now(),
               property: currentProperty.name,
               period: `${startYear} - ${endYear}`,
@@ -225,25 +213,41 @@ const LocataireDetail = () => {
               departureDate: endYear,
               relationStatus: reportData.relation || 'Terminée',
               landlordName: 'Coulibaly Sékou'
-            });
+            };
 
-            // Remove tenant from property's currentTenants
-            if (currentProperty.currentTenants) {
-              const idx = currentProperty.currentTenants.indexOf(tenant.id);
-              if (idx > -1) currentProperty.currentTenants.splice(idx, 1);
-              currentProperty.occupants = currentProperty.currentTenants.length;
-              currentProperty.status = currentProperty.occupants === 0 ? 'Vacant' : 
-                (currentProperty.type === 'Immeuble' ? 'Partiellement occupé' : 'Occupé');
-            }
-            // Remove from unit if applicable
-            if (currentUnit) {
-              currentUnit.tenantId = null;
-            }
-            
-            // Clear tenant's property info
-            tenant.property = null;
-            tenant.unitNumber = null;
-            
+            // Update tenants
+            setTenants(prev => prev.map(t => {
+              if (t.id === tenant.id) {
+                const history = t.history ? [newHistoryItem, ...t.history] : [newHistoryItem];
+                return {
+                  ...t,
+                  property: null,
+                  unitNumber: null,
+                  history
+                };
+              }
+              return t;
+            }));
+
+            // Update properties
+            setProperties(prev => prev.map(p => {
+              if (p.id === currentProperty.id) {
+                const currentTenants = p.currentTenants ? p.currentTenants.filter(tid => tid !== tenant.id) : [];
+                const occupants = currentTenants.length;
+                const status = occupants === 0 ? 'Vacant' : (p.type === 'Immeuble' ? 'Partiellement occupé' : 'Occupé');
+                
+                const units = p.units ? p.units.map(u => {
+                  if (u.tenantId === tenant.id) {
+                    return { ...u, tenantId: null };
+                  }
+                  return u;
+                }) : p.units;
+
+                return { ...p, currentTenants, occupants, status, units };
+              }
+              return p;
+            }));
+
             setIsPendingVacate(false);
             setRefresh(r => r + 1);
           }

@@ -1,32 +1,26 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, FlatList, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/Header';
 import ReviewCard from '../components/ReviewCard';
 import { COLORS, fs } from '../Styles/global';
+import { useAuth } from '../context/AuthContext';
 
 const FILTERS = ['Tous', 'Non lu', 'Validés', 'Contestés'];
 
 export default function Home({ navigation }) {
   const [activeFilter, setActiveFilter] = useState('Tous');
-
-  // Real state for reviews
-  const [reviews, setReviews] = useState([
-    { id: '1', status: 'validated', date: 'Mars 2024', comment: "Excellent locataire, loyer toujours réglé en avance." },
-    { id: '2', status: null, date: 'Février 2024', comment: "Bon locataire, il paye toujours son loyer à temps." },
-    { id: '3', status: 'contested', date: 'Janvier 2024', comment: "Rapport contesté concernant des retards prétendus." },
-    { id: '4', status: null, date: 'Décembre 2023', comment: "Très soigneux avec le logement et discret." },
-  ]);
+  const { reviews, updateReviewStatus } = useAuth();
 
   const handleValidate = (id) => {
-    setReviews(prev => prev.map(r => r.id === id ? { ...r, status: 'validated' } : r));
+    updateReviewStatus(id, 'validated');
   };
 
   const handleContest = (id) => {
     navigation.navigate('Contestation', {
       reviewId: id,
       onSubmit: () => {
-        setReviews(prev => prev.map(r => r.id === id ? { ...r, status: 'contested' } : r));
+        updateReviewStatus(id, 'contested');
       }
     });
   };

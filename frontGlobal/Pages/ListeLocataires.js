@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, fs } from '../Styles/global';
 import UserAvatar from '../components/UserAvatar';
+import { useAuth } from '../context/AuthContext';
 
 const DUMMY_USERS = [
   { id: '1', name: 'Coulibaly Sékou', initials: 'CS', location: 'Abidjan, Cocody', rating: 4.7, reviewCount: 3, avatar: null },
@@ -35,34 +36,38 @@ const FILTER_CHIPS = [
 ];
 
 export default function ListeLocataires({ navigation }) {
+  const { user, hasActiveSubscription, getTenantScore, reviewsByUser } = useAuth();
+  const isVisitor = user?.role === 'visitor';
+  const activeSub = hasActiveSubscription();
+  const isLimitedVisitor = isVisitor && !activeSub;
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState('all');
 
-  // Filter users based on search & active filter chip
-  const filteredUsers = DUMMY_USERS.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          user.location.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    if (!matchesSearch) return false;
+  // Enrich users with dynamic ratings and review counts from the context
+  const dynamicUsers = DUMMY_USERS.map(u => ({
+    ...u,
+    rating: getTenantScore(u.id),
+    reviewCount: reviewsByUser[u.id]?.length || 0
+  }));
 
-    if (selectedFilter === 'Abidjan') {
-      return user.location.toLowerCase().includes('abidjan');
-    }
-    if (selectedFilter === 'Bouaké') {
-      return user.location.toLowerCase().includes('bouaké');
-    }
-    if (selectedFilter === 'San Pedro') {
-      return user.location.toLowerCase().includes('san pedro');
-    }
-    if (selectedFilter === 'rating45') {
-      return user.rating >= 4.5;
-    }
-    if (selectedFilter === 'reviews2') {
-      return user.reviewCount >= 2;
-    }
+  // Filter users based on search & active filter chip
+  const allFiltered = dynamicUsers.filter(u => {
+    const matchesSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          u.location.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+    if (selectedFilter === 'Abidjan') return u.location.toLowerCase().includes('abidjan');
+    if (selectedFilter === 'Bouaké') return u.location.toLowerCase().includes('bouaké');
+    if (selectedFilter === 'San Pedro') return u.location.toLowerCase().includes('san pedro');
+    if (selectedFilter === 'rating45') return u.rating >= 4.5;
+    if (selectedFilter === 'reviews2') return u.reviewCount >= 2;
     return true;
   });
+
+  // Limited visitors only see the first 3 results
+  const VISITOR_LIMIT = 3;
+  const filteredUsers = isLimitedVisitor ? allFiltered.slice(0, VISITOR_LIMIT) : allFiltered;
+  const hasHiddenResults = isLimitedVisitor && allFiltered.length > VISITOR_LIMIT;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -161,6 +166,23 @@ export default function ListeLocataires({ navigation }) {
             <Text style={styles.emptyText}>Aucun locataire trouvé</Text>
           </View>
         )}
+        ListFooterComponent={() => hasHiddenResults ? (
+          <View style={styles.paywallBanner}>
+            <Ionicons name="lock-closed" size={20} color="#F59A23" style={{ marginBottom: 8 }} />
+            <Text style={styles.paywallBannerTitle}>
+              {allFiltered.length - VISITOR_LIMIT} résultat(s) masqué(s)
+            </Text>
+            <Text style={styles.paywallBannerSub}>
+              Abonnez-vous pour accéder à tous les profils de locataires
+            </Text>
+            <TouchableOpacity
+              style={styles.paywallBannerBtn}
+              onPress={() => navigation.navigate('Abonnement')}
+            >
+              <Text style={styles.paywallBannerBtnText}>Voir les offres</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
       />
     </SafeAreaView>
   );
@@ -333,5 +355,41 @@ const styles = StyleSheet.create({
   filterButtonActive: {
     backgroundColor: '#E8F5E9',
     borderRadius: 8,
+  },
+
+  // Paywall Banner
+  paywallBanner: {
+    margin: 16,
+    backgroundColor: '#FFF8E1',
+    borderWidth: 1.5,
+    borderColor: '#FFE082',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+  },
+  paywallBannerTitle: {
+    fontSize: fs(14),
+    fontWeight: '800',
+    color: '#182C2A',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  paywallBannerSub: {
+    fontSize: fs(12),
+    color: '#7A8B89',
+    textAlign: 'center',
+    lineHeight: 17,
+    marginBottom: 16,
+  },
+  paywallBannerBtn: {
+    backgroundColor: '#F59A23',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  paywallBannerBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: fs(13),
   },
 });

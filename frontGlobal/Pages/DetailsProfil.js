@@ -5,6 +5,7 @@ import { COLORS, SIZES, fs } from '../Styles/global';
 import UserAvatar from '../components/UserAvatar';
 import RatingStars from '../components/RatingStars';
 import { TimelineNode, ReviewItem } from '../components/ProfileComponents';
+import { useAuth } from '../context/AuthContext';
 
 const TIMELINE_BY_USER = {
   '1': [
@@ -70,16 +71,50 @@ const REVIEWS_BY_USER = {
 };
 
 export default function DetailsProfil({ route, navigation }) {
-  const { user } = route.params || {};
+  const { user, canViewProfile, consumeCredit, getTenantScore, reviewsByUser } = useAuth();
+  const isVisitor = user?.role === 'visitor';
+  const { user: profileUser } = route.params || {};
 
-  const userId = user?.id || '1';
+  const userId = profileUser?.id || '1';
+  const hasAccess = canViewProfile(userId);
   const timelineData = TIMELINE_BY_USER[userId] || TIMELINE_BY_USER['1'];
-  const reviewsData = REVIEWS_BY_USER[userId] || REVIEWS_BY_USER['1'];
+  const reviewsData = reviewsByUser[userId] || [];
 
-  const profileName = user?.name || "Coulibaly Sékou";
-  const profileInitials = user?.initials || "CS";
-  const profileLocation = user?.location || "Abidjan, Cocody";
-  const profileRating = user?.rating || 4.7;
+  const profileName = profileUser?.name || "Coulibaly Sékou";
+  const profileInitials = profileUser?.initials || "CS";
+  const profileLocation = profileUser?.location || "Abidjan, Cocody";
+  const profileRating = getTenantScore(userId);
+
+  const PaywallCard = () => (
+    <View style={styles.paywallCard}>
+      <View style={styles.paywallIconRow}>
+        <View style={styles.paywallIconCircle}>
+          <Ionicons name="lock-closed" size={24} color="#F59A23" />
+        </View>
+      </View>
+      <Text style={styles.paywallTitle}>Accès Complet</Text>
+      <Text style={styles.paywallSubtitle}>
+        Débloquez l'historique complet et tous les avis de ce profil
+      </Text>
+      <View style={styles.paywallButtons}>
+        {user?.accessCredits > 0 ? (
+          <TouchableOpacity style={styles.paywallBtnPrimary} onPress={() => consumeCredit(userId)}>
+            <Text style={styles.paywallBtnPrimaryText}>Débloquer (1 crédit)</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.paywallBtnPrimary} onPress={() => navigation.navigate('Abonnement')}>
+            <Text style={styles.paywallBtnPrimaryText}>Payer 500 FCFA</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          style={styles.paywallBtnSecondary}
+          onPress={() => navigation.navigate('Abonnement')}
+        >
+          <Text style={styles.paywallBtnSecondaryText}>S'abonner</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -109,49 +144,50 @@ export default function DetailsProfil({ route, navigation }) {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* Historique de location Title outside card */}
+        {/* Historique de location */}
         <Text style={styles.sectionHeaderTitle}>Historique de location</Text>
-        
-        <View style={styles.card}>
-          <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
-            <View style={{ position: 'relative', width: timelineData.length * 130, paddingVertical: 10 }}>
-              {/* Connecting line perfectly centered horizontally relative to nodes (center of first to last) */}
-              <View 
-                style={{
-                  position: 'absolute',
-                  top: 40, // mathematically aligned with circle centers
-                  left: 65, // starts at the center of the first node circle (130 / 2)
-                  width: (timelineData.length - 1) * 130,
-                  height: 3,
-                  backgroundColor: '#E8F5E9',
-                  zIndex: 1,
-                }} 
-              />
-              <View style={{ flexDirection: 'row' }}>
-                {timelineData.map((item) => (
-                  <TimelineNode key={item.id} item={item} width={130} />
-                ))}
-              </View>
-            </View>
-          </ScrollView>
-        </View>
 
-        {/* Avis propriétaires Title outside card */}
+        {!hasAccess ? (
+          <PaywallCard />
+        ) : (
+          <View style={styles.card}>
+            <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
+              <View style={{ position: 'relative', width: timelineData.length * 130, paddingVertical: 10 }}>
+                <View
+                  style={{
+                    position: 'absolute', top: 40, left: 65,
+                    width: (timelineData.length - 1) * 130, height: 3,
+                    backgroundColor: '#E8F5E9', zIndex: 1,
+                  }}
+                />
+                <View style={{ flexDirection: 'row' }}>
+                  {timelineData.map((item) => (
+                    <TimelineNode key={item.id} item={item} width={130} />
+                  ))}
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Avis propriétaires */}
         <Text style={styles.sectionHeaderTitle}>Avis propriétaires</Text>
-        
+
         <View style={styles.card}>
           {reviewsData.map((item, index) => (
-            <ReviewItem 
-              key={item.id} 
-              item={item} 
+            <ReviewItem
+              key={item.id}
+              item={item}
               isLast={index === reviewsData.length - 1}
-              onPress={() => navigation.navigate('DetailsAvis', { 
-                review: item, 
-                user: { name: profileName, initials: profileInitials, rating: profileRating, avatar: user?.avatar } 
+              blurred={!hasAccess}
+              onPress={() => navigation.navigate('DetailsAvis', {
+                review: item,
+                user: { name: profileName, initials: profileInitials, rating: profileRating, avatar: profileUser?.avatar }
               })}
             />
           ))}
         </View>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -291,4 +327,39 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: fs(11),
   },
+
+  // ── Paywall Card ───────────────────────────────────────
+  paywallCard: {
+    backgroundColor: '#FFF8E1',
+    borderWidth: 1.5,
+    borderColor: '#FFE082',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  paywallIconRow: { marginBottom: 12 },
+  paywallIconCircle: {
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5, borderColor: '#FFE082',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  paywallTitle: {
+    fontSize: fs(16), fontWeight: '800', color: '#182C2A', marginBottom: 6,
+  },
+  paywallSubtitle: {
+    fontSize: fs(12), color: '#7A8B89', textAlign: 'center', lineHeight: 17, marginBottom: 16,
+  },
+  paywallButtons: { flexDirection: 'row', gap: 10 },
+  paywallBtnPrimary: {
+    backgroundColor: '#F59A23', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12,
+  },
+  paywallBtnPrimaryText: { color: '#FFFFFF', fontWeight: '800', fontSize: fs(13) },
+  paywallBtnSecondary: {
+    backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#E2E8F0',
+    paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12,
+  },
+  paywallBtnSecondaryText: { color: '#182C2A', fontWeight: '700', fontSize: fs(13) },
 });
+

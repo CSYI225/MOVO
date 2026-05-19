@@ -9,26 +9,46 @@ import Contestation from './Pages/Contestation';
 import Notifications from './Pages/Notifications';
 import Profil from './Pages/Profil';
 import DetailsAvis from './Pages/DetailsAvis';
+import ProfilPublic from './Pages/ProfilPublic';
+import Auth from './Pages/Auth';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 const Stack = createNativeStackNavigator();
 
-export default function App() {
+function AppNavigator() {
+  const { user } = useAuth();
+  
   return (
-    <SafeAreaProvider>
-      <StatusBar style="dark" />
-      <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-          }}
-        >
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      {user?.isLoggedIn ? (
+        <>
           <Stack.Screen name="Accueil" component={Accueil} />
           <Stack.Screen name="Contestation" component={Contestation} />
           <Stack.Screen name="Notifications" component={Notifications} />
           <Stack.Screen name="Profil" component={Profil} />
           <Stack.Screen name="DetailsAvis" component={DetailsAvis} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+          <Stack.Screen name="ProfilPublic" component={ProfilPublic} />
+        </>
+      ) : (
+        <Stack.Screen name="Auth" component={Auth} />
+      )}
+    </Stack.Navigator>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <SafeAreaProvider>
+        <StatusBar style="dark" />
+        <NavigationContainer>
+          <AppNavigator />
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </AuthProvider>
   );
 }

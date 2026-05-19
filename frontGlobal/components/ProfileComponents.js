@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../Styles/global';
 import RatingStars from './RatingStars';
 
@@ -39,7 +40,7 @@ export const TimelineNode = ({ item, width = 130 }) => {
   );
 };
 
-export const ReviewItem = ({ item, onPress, isLast }) => {
+export const ReviewItem = ({ item, onPress, isLast, blurred = false }) => {
   const relation = item.relation || 'Vérifiée';
   
   let badgeBg = '#C9E84F';
@@ -56,10 +57,19 @@ export const ReviewItem = ({ item, onPress, isLast }) => {
   return (
     <TouchableOpacity 
       style={styles.reviewItem}
-      onPress={onPress}
+      onPress={blurred ? null : onPress}
+      activeOpacity={blurred ? 1 : 0.7}
     >
       <View style={styles.reviewHeaderRow}>
-        <Text style={styles.reviewLocation}>{item.location}</Text>
+        {/* Location — blurred for visitors */}
+        {blurred ? (
+          <View style={styles.blurredLocationRow}>
+            <View style={styles.blurredBar} />
+            <Ionicons name="lock-closed" size={11} color="#AABAB8" style={{ marginLeft: 6 }} />
+          </View>
+        ) : (
+          <Text style={styles.reviewLocation}>{item.location}</Text>
+        )}
         <Text style={styles.reviewDate}>{item.date}</Text>
       </View>
       <View style={styles.reviewSubRow}>
@@ -70,9 +80,16 @@ export const ReviewItem = ({ item, onPress, isLast }) => {
           </Text>
         </View>
       </View>
-      <Text style={styles.reviewText}>
-        {item.text}
-      </Text>
+      {/* Description — blurred for visitors */}
+      {blurred ? (
+        <View style={styles.blurredTextBlock}>
+          <View style={[styles.blurredTextBar, { width: '100%' }]} />
+          <View style={[styles.blurredTextBar, { width: '85%' }]} />
+          <View style={[styles.blurredTextBar, { width: '65%' }]} />
+        </View>
+      ) : (
+        <Text style={styles.reviewText}>{item.text}</Text>
+      )}
       {!isLast && <View style={styles.reviewSeparator} />}
     </TouchableOpacity>
   );
@@ -165,7 +182,27 @@ const styles = StyleSheet.create({
   },
   reviewSeparator: {
     height: 1,
-    backgroundColor: '#F2F4F4', // Thin light gray separator divider
+    backgroundColor: '#F2F4F4',
     marginTop: 15,
+  },
+
+  // ── Blurred (visitor mode) ──────────────────────────────
+  blurredLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  blurredBar: {
+    width: 110,
+    height: 13,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 6,
+  },
+  blurredTextBlock: {
+    gap: 6,
+  },
+  blurredTextBar: {
+    height: 11,
+    backgroundColor: '#EEF1F4',
+    borderRadius: 5,
   },
 });

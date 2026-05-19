@@ -61,8 +61,11 @@ const NotifIcon = ({ type }) => {
   }
 };
 
+import { useAuth } from '../../context/AuthContext';
+
 const Header = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState(mockNotifications);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
@@ -76,10 +79,15 @@ const Header = () => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
 
+  const getInitials = (name) => {
+    if (!name) return 'CS';
+    return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  };
+
   return (
     <header className="header">
       <div className="header-greeting">
-        <h1>Bonjour, Coulibaly Sékou 👋</h1>
+        <h1>Bonjour, {user?.name || "Coulibaly Sékou"} 👋</h1>
         <p>Voici un aperçu de votre activité aujourd'hui.</p>
       </div>
       
@@ -133,9 +141,9 @@ const Header = () => {
         
         <div className="user-profile-wrapper">
           <div className="user-profile" onClick={() => navigate('/profile')}>
-            <div className="avatar">CS</div>
+            <div className="avatar">{getInitials(user?.name)}</div>
             <div className="user-info">
-              <span className="user-name">Coulibaly Sékou</span>
+              <span className="user-name">{user?.name || "Coulibaly Sékou"}</span>
               <span className="user-role">Bailleur</span>
             </div>
           </div>

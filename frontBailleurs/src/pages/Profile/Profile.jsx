@@ -1,16 +1,24 @@
 import React, { useState } from 'react';
 import { User, Mail, Phone, MapPin, Camera, Lock, Star, Edit3, Save } from 'lucide-react';
 import './Profile.css';
+import { useAuth } from '../../context/AuthContext';
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
+  const { user, getLandlordCredibility } = useAuth();
+  const credibility = getLandlordCredibility();
+
+  const getInitials = (name) => {
+    if (!name) return 'CS';
+    return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  };
 
   return (
     <div className="profile-page-container">
       <div className="profile-header-banner">
         <div className="profile-main-info">
           <div className="profile-avatar-wrapper">
-            <div className="profile-avatar-large">CS</div>
+            <div className="profile-avatar-large">{getInitials(user?.name)}</div>
             {isEditing && (
               <button className="edit-avatar-btn">
                 <Camera size={16} />
@@ -18,11 +26,11 @@ const Profile = () => {
             )}
           </div>
           <div className="profile-text-info">
-            <h1>Coulibaly Sékou</h1>
+            <h1>{user?.name || "Coulibaly Sékou"}</h1>
             <p className="profile-subtitle">Bailleur Certifié • Membre depuis Janvier 2024</p>
             <div className="rating-badge-profile">
               <Star size={14} fill="#73BA7C" color="#73BA7C" />
-              <span>4,7 / 5</span>
+              <span>{credibility}% de crédibilité</span>
             </div>
           </div>
         </div>
@@ -39,14 +47,14 @@ const Profile = () => {
               <label>Nom complet</label>
               <div className="input-with-icon">
                 <User size={18} />
-                <input type="text" defaultValue="Coulibaly Sékou" readOnly={!isEditing} />
+                <input type="text" defaultValue={user?.name || "Coulibaly Sékou"} readOnly={!isEditing} />
               </div>
             </div>
             <div className="form-group">
               <label>Adresse Email</label>
               <div className="input-with-icon">
                 <Mail size={18} />
-                <input type="email" defaultValue="sekou.coulibaly@email.com" readOnly={!isEditing} />
+                <input type="email" defaultValue={user?.email || "sekou.coulibaly@email.com"} readOnly={!isEditing} />
               </div>
             </div>
             <div className="form-group">

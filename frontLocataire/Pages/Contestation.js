@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView, Text, TextInput, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/Header';
 import ReviewCard from '../components/ReviewCard';
@@ -7,6 +7,23 @@ import { COLORS, fs } from '../Styles/global';
 
 export default function Contestation({ navigation, route }) {
   const { onSubmit, reviewId } = route.params || {};
+  const [proofs, setProofs] = useState([
+    { id: '1', type: 'document' },
+    { id: '2', type: 'image' }
+  ]);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleAddProof = () => {
+    setIsUploading(true);
+    setTimeout(() => {
+      setProofs(prev => [...prev, { id: Date.now().toString(), type: 'document' }]);
+      setIsUploading(false);
+    }, 1500);
+  };
+
+  const handleRemoveProof = (id) => {
+    setProofs(prev => prev.filter(p => p.id !== id));
+  };
 
   const handleSubmit = () => {
     if (onSubmit) onSubmit(reviewId);
@@ -39,26 +56,21 @@ export default function Contestation({ navigation, route }) {
 
         <Text style={styles.sectionLabel}>Pièces jointes - Preuves</Text>
         <View style={styles.proofsContainer}>
-          <View style={styles.proofBox}>
-            <Ionicons name="document-text-outline" size={28} color="#84B889" />
-            <TouchableOpacity style={styles.removeProof} activeOpacity={0.7}>
-              <Ionicons name="close-circle" size={18} color="#FF5252" />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.proofBox}>
-            <Ionicons name="image-outline" size={28} color="#84B889" />
-            <TouchableOpacity style={styles.removeProof} activeOpacity={0.7}>
-              <Ionicons name="close-circle" size={18} color="#FF5252" />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.proofBox}>
-            <Ionicons name="image-outline" size={28} color="#84B889" />
-            <TouchableOpacity style={styles.removeProof} activeOpacity={0.7}>
-              <Ionicons name="close-circle" size={18} color="#FF5252" />
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity style={[styles.proofBox, styles.addProof]} activeOpacity={0.7}>
-            <Ionicons name="add" size={28} color="#7A8B89" />
+          {proofs.map(proof => (
+            <View key={proof.id} style={styles.proofBox}>
+              <Ionicons name={proof.type === 'document' ? "document-text-outline" : "image-outline"} size={28} color="#84B889" />
+              <TouchableOpacity style={styles.removeProof} onPress={() => handleRemoveProof(proof.id)} activeOpacity={0.7}>
+                <Ionicons name="close-circle" size={18} color="#FF5252" />
+              </TouchableOpacity>
+            </View>
+          ))}
+          
+          <TouchableOpacity style={[styles.proofBox, styles.addProof]} onPress={handleAddProof} disabled={isUploading} activeOpacity={0.7}>
+            {isUploading ? (
+              <ActivityIndicator size="small" color="#7A8B89" />
+            ) : (
+              <Ionicons name="add" size={28} color="#7A8B89" />
+            )}
           </TouchableOpacity>
         </View>
 

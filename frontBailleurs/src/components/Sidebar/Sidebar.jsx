@@ -11,7 +11,10 @@ import {
 import './Sidebar.css';
 import Logomovo from "../../Images/logo.png"
 
+import { useAuth } from '../../context/AuthContext';
+
 const Sidebar = () => {
+  const { logout } = useAuth();
   const menuItems = [
     { path: '/dashboard', name: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { path: '/biens', name: 'Mes biens', icon: <Home size={20} /> },
@@ -54,7 +57,7 @@ const Sidebar = () => {
             <a href="#">Centre d'aide</a>
           </div>
         </div>
-        <button className="collapse-btn">
+        <button className="collapse-btn" onClick={logout}>
           <ChevronLeft size={20} /> Déconnexion
         </button>
       </div>
