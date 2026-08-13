@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, fs } from '../Styles/global';
 import UserAvatar from './UserAvatar';
 
+import { useAuth } from '../context/AuthContext';
+
 const Header = ({ 
   showSearch = false, 
   title, 
@@ -14,6 +16,10 @@ const Header = ({
   onSearchChange,
   placeholder = "Rechercher..."
 }) => {
+  const { user, hasPendingDemandes } = useAuth();
+  const userInitials = `${(user?.prenom && user.prenom[0]) || ''}${(user?.nom && user.nom[0]) || ''}`.toUpperCase() 
+    || (user?.name ? user.name.slice(0, 2).toUpperCase() : 'MO');
+
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
@@ -45,10 +51,10 @@ const Header = ({
           <View style={styles.rightIcons}>
             <TouchableOpacity style={styles.iconButton} onPress={onNotificationPress} activeOpacity={0.7}>
               <Ionicons name="notifications-outline" size={24} color="#182C2A" />
-              <View style={styles.badge} />
+              {hasPendingDemandes && <View style={styles.badge} />}
             </TouchableOpacity>
             <TouchableOpacity style={styles.avatarWrapper} onPress={onProfilePress} activeOpacity={0.7}>
-              <UserAvatar initials="CS" size={32} color="#C9E84F" textColor="#182C2A" />
+              <UserAvatar initials={userInitials} size={32} color="#C9E84F" textColor="#182C2A" />
             </TouchableOpacity>
           </View>
         )}

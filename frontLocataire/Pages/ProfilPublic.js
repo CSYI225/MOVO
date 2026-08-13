@@ -5,6 +5,13 @@ import { fs } from '../Styles/global';
 import UserAvatar from '../components/UserAvatar';
 import RatingStars from '../components/RatingStars';
 
+const formatRating = (num) => {
+  const val = Number(num);
+  if (isNaN(val)) return '5';
+  if (Number.isInteger(val)) return String(val);
+  return val.toFixed(1).replace('.', ',');
+};
+
 // ── Components localisés pour correspondre exactement à DetailsProfil ──
 
 const TimelineNode = ({ item, width = 130 }) => {
@@ -86,19 +93,14 @@ import { useAuth } from '../context/AuthContext';
 // ── Écran Principal de Profil Public ──
 
 export default function ProfilPublic({ navigation }) {
-  const { reviews, getTenantScore } = useAuth();
-  // Données simulées pour correspondre à "Coulibaly Sékou" (id '1') de DetailsProfil
-  const profileName = "Coulibaly Sékou";
-  const profileInitials = "CS";
-  const profileLocation = "Abidjan, Cocody";
+  const { user, reviews, getTenantScore } = useAuth();
+
+  const profileName = `${user?.prenom || ''} ${user?.nom || ''}`.trim() || user?.name || user?.email || 'Locataire MOVO';
+  const profileInitials = `${(user?.prenom && user.prenom[0]) || ''}${(user?.nom && user.nom[0]) || ''}`.toUpperCase() || 'MO';
+  const profileLocation = 'Abidjan, Côte d\'Ivoire';
   const profileRating = getTenantScore();
 
-  const timelineData = [
-    { id: '1', location: 'Abidjan, Cocody', date: 'Jul 2023 - Présent', relation: 'Vérifiée' },
-    { id: '2', location: 'Abidjan, Marcory', date: 'Jan 2021 - Jui 2023', relation: 'Vérifiée' },
-    { id: '3', location: 'Bouaké, Nimbo', date: 'Fév 2018 - Déc 2020', relation: 'Non vérifiée' },
-  ];
-
+  const timelineData = [];
   const reviewsData = reviews;
 
   return (
@@ -121,7 +123,7 @@ export default function ProfilPublic({ navigation }) {
           </View>
           
           <View style={styles.ratingHeaderContainer}>
-            <Text style={styles.bigRatingText}>{profileRating.toFixed(1).replace('.', ',')}</Text>
+            <Text style={styles.bigRatingText}>{formatRating(profileRating)}</Text>
             <RatingStars rating={profileRating} />
           </View>
         </View>
@@ -133,39 +135,51 @@ export default function ProfilPublic({ navigation }) {
         <Text style={styles.sectionHeaderTitle}>Historique de location</Text>
 
         <View style={styles.card}>
-          <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
-            <View style={{ position: 'relative', width: timelineData.length * 130, paddingVertical: 10 }}>
-              <View
-                style={{
-                  position: 'absolute', top: 40, left: 65,
-                  width: (timelineData.length - 1) * 130, height: 3,
-                  backgroundColor: '#E8F5E9', zIndex: 1,
-                }}
-              />
-              <View style={{ flexDirection: 'row' }}>
-                {timelineData.map((item) => (
-                  <TimelineNode key={item.id} item={item} width={130} />
-                ))}
+          {timelineData.length > 0 ? (
+            <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
+              <View style={{ position: 'relative', width: timelineData.length * 130, paddingVertical: 10 }}>
+                <View
+                  style={{
+                    position: 'absolute', top: 40, left: 65,
+                    width: (timelineData.length - 1) * 130, height: 3,
+                    backgroundColor: '#E8F5E9', zIndex: 1,
+                  }}
+                />
+                <View style={{ flexDirection: 'row' }}>
+                  {timelineData.map((item) => (
+                    <TimelineNode key={item.id} item={item} width={130} />
+                  ))}
+                </View>
               </View>
-            </View>
-          </ScrollView>
+            </ScrollView>
+          ) : (
+            <Text style={{ fontSize: fs(12), color: '#7A8B89', textAlign: 'center', paddingVertical: 8 }}>
+              Aucun historique de location enregistré.
+            </Text>
+          )}
         </View>
 
         {/* Avis propriétaires */}
         <Text style={styles.sectionHeaderTitle}>Avis propriétaires</Text>
 
         <View style={styles.card}>
-          {reviewsData.map((item, index) => (
-            <ReviewItem
-              key={item.id}
-              item={item}
-              isLast={index === reviewsData.length - 1}
-              onPress={() => navigation.navigate('DetailsAvis', {
-                review: item,
-                user: { name: profileName, initials: profileInitials, rating: profileRating }
-              })}
-            />
-          ))}
+          {reviewsData.length > 0 ? (
+            reviewsData.map((item, index) => (
+              <ReviewItem
+                key={item.id}
+                item={item}
+                isLast={index === reviewsData.length - 1}
+                onPress={() => navigation.navigate('DetailsAvis', {
+                  review: item,
+                  user: { name: profileName, initials: profileInitials, rating: profileRating }
+                })}
+              />
+            ))
+          ) : (
+            <Text style={{ fontSize: fs(12), color: '#7A8B89', textAlign: 'center', paddingVertical: 8 }}>
+              Aucun avis pour le moment.
+            </Text>
+          )}
         </View>
 
       </ScrollView>

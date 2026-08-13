@@ -1,33 +1,114 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, Text, TextInput, TouchableOpacity, ActivityIndicator, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import Header from '../components/Header';
 import ReviewCard from '../components/ReviewCard';
 import { COLORS, fs } from '../Styles/global';
+import { useAuth } from '../context/AuthContext';
 
 export default function Contestation({ navigation, route }) {
-  const { onSubmit, reviewId } = route.params || {};
-  const [proofs, setProofs] = useState([
-    { id: '1', type: 'document' },
-    { id: '2', type: 'image' }
-  ]);
+  const { onSubmit, reviewId, review } = route.params || {};
+  const { user, API_URL } = useAuth();
+  const [proofs, setProofs] = useState(() => {
+    if (review?.piecesJointesContestation && Array.isArray(review.piecesJointesContestation)) {
+      return review.piecesJointesContestation.map(pj => ({
+        id: pj.id,
+        type: pj.type || 'document',
+        name: pj.nom,
+        url: pj.url,
+      }));
+    }
+    return [];
+  });
   const [isUploading, setIsUploading] = useState(false);
+  const [reason, setReason] = useState(review?.raisonContestation || review?.contestationRaison || '');
 
-  const handleAddProof = () => {
-    setIsUploading(true);
-    setTimeout(() => {
-      setProofs(prev => [...prev, { id: Date.now().toString(), type: 'document' }]);
+  const handleAddProof = async () => {
+    try {
+      setIsUploading(true);
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const fileName = asset.name || `Piece_jointe_${Date.now()}.${asset.mimeType?.includes('pdf') ? 'pdf' : 'jpg'}`;
+        const isPdf = asset.mimeType?.includes('pdf') || fileName.toLowerCase().endsWith('.pdf');
+
+        const newProof = {
+          id: Date.now().toString(),
+          type: isPdf ? 'document' : 'image',
+          name: fileName,
+          uri: asset.uri,
+          file: {
+            uri: asset.uri,
+            name: fileName,
+            type: asset.mimeType || (isPdf ? 'application/pdf' : 'image/jpeg'),
+          },
+        };
+        setProofs(prev => [...prev, newProof]);
+      }
+    } catch (err) {
+      console.error('Erreur sélection document :', err);
+      Alert.alert('Erreur', 'Impossible d\'accéder aux fichiers de votre appareil.');
+    } finally {
       setIsUploading(false);
-    }, 1500);
+    }
   };
 
   const handleRemoveProof = (id) => {
     setProofs(prev => prev.filter(p => p.id !== id));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!reason.trim()) {
+      Alert.alert('Erreur', 'Veuillez saisir le motif de votre contestation.');
+      return;
+    }
+
     if (onSubmit) onSubmit(reviewId);
-    navigation.goBack();
+    if (reviewId && user?.token) {
+      try {
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append('raison', reason);
+        proofs.forEach(p => {
+          if (p.file) {
+            formData.append('piecesJointes', {
+              uri: Platform.OS === 'android' ? p.file.uri : p.file.uri.replace('file://', ''),
+              name: p.file.name,
+              type: p.file.type,
+            });
+          }
+        });
+
+        const res = await fetch(`${API_URL}/avis/${reviewId}/contester`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          Alert.alert('Erreur', data.message || 'Erreur lors de la contestation.');
+          return;
+        }
+
+        Alert.alert('Succès', data.message || 'Votre contestation a bien été enregistrée.');
+        navigation.goBack();
+      } catch (err) {
+        console.error('Erreur soumission contestation :', err);
+        Alert.alert('Erreur', 'Erreur réseau lors de la soumission.');
+      } finally {
+        setIsUploading(false);
+      }
+    } else {
+      navigation.goBack();
+    }
   };
 
   return (
@@ -40,7 +121,7 @@ export default function Contestation({ navigation, route }) {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.sectionLabel}>Rapport Concerné</Text>
-        <ReviewCard showActions={false} />
+        <ReviewCard data={review} showActions={false} />
 
         <Text style={styles.sectionLabel}>Motif de la contestation</Text>
         <View style={styles.inputContainer}>
@@ -50,7 +131,8 @@ export default function Contestation({ navigation, route }) {
             style={styles.textArea}
             placeholder="Renseignez ici le motif détaillé de votre contestation..."
             placeholderTextColor="#7A8B89"
-            defaultValue="Le bailleur prétend qu'il y a eu des retards de paiement, mais j'ai toutes les preuves de virements bancaires effectués à temps le 1er de chaque mois."
+            value={reason}
+            onChangeText={setReason}
           />
         </View>
 
@@ -74,8 +156,12 @@ export default function Contestation({ navigation, route }) {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} activeOpacity={0.7}>
-          <Text style={styles.submitButtonText}>Soumettre la Contestation</Text>
+        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={isUploading} activeOpacity={0.7}>
+          {isUploading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.submitButtonText}>Soumettre la Contestation</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -150,7 +236,7 @@ const styles = StyleSheet.create({
     borderRadius: 9,
   },
   submitButton: {
-    backgroundColor: '#0F322B', // Matches our primary dark sapin green!
+    backgroundColor: '#0F322B',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',

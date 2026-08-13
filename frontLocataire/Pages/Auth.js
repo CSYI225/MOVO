@@ -2,14 +2,38 @@ import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   SafeAreaView, TextInput, StatusBar, Image,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { fs } from '../Styles/global';
 import { useAuth } from '../context/AuthContext';
 
+const InputField = ({ label, icon, placeholder, value, onChange, secure, showToggle, onToggle, keyboardType, autoCapitalize }) => (
+  <View style={styles.inputGroup}>
+    <Text style={styles.sectionLabel}>{label}</Text>
+    <View style={styles.inputWrapper}>
+      {icon && <Feather name={icon} size={16} color="#7A8B89" style={styles.inputIcon} />}
+      <TextInput
+        style={[styles.input, { flex: 1 }]}
+        placeholder={placeholder}
+        placeholderTextColor="#AABAB8"
+        value={value}
+        onChangeText={onChange}
+        secureTextEntry={secure && !showToggle}
+        keyboardType={keyboardType || 'default'}
+        autoCapitalize={autoCapitalize || 'none'}
+      />
+      {secure && (
+        <TouchableOpacity onPress={onToggle} style={{ padding: 4 }}>
+          <Feather name={showToggle ? 'eye-off' : 'eye'} size={16} color="#7A8B89" />
+        </TouchableOpacity>
+      )}
+    </View>
+  </View>
+);
+
 export default function Auth() {
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const [view, setView] = useState('login'); // 'login' | 'register' | 'forgot'
 
   // Login fields
@@ -28,42 +52,39 @@ export default function Auth() {
   // Forgot fields
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    const name = loginEmail ? loginEmail.split('@')[0].replace('.', ' ') : 'Coulibaly Sékou';
-    login(name, loginEmail || 's.coulibaly@movo.ci');
+  const handleLogin = async () => {
+    if (!loginEmail || !loginPassword) {
+      Alert.alert('Erreur', 'Veuillez saisir votre email et votre mot de passe.');
+      return;
+    }
+    setLoading(true);
+    const res = await login(loginEmail, loginPassword);
+    setLoading(false);
+    if (!res.success) {
+      Alert.alert('Échec de la connexion', res.error);
+    }
   };
 
-  const handleRegister = () => {
-    const name = `${regNom || 'Coulibaly'} ${regPrenom || 'Sékou'}`.trim();
-    login(name, regEmail || 's.coulibaly@movo.ci');
+  const handleRegister = async () => {
+    if (!regNom || !regPrenom || !regEmail || !regPassword) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires.');
+      return;
+    }
+    if (regPassword !== regConfirm) {
+      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas.');
+      return;
+    }
+    setLoading(true);
+    const res = await register(regPrenom, regNom, regEmail, regPassword);
+    setLoading(false);
+    if (!res.success) {
+      Alert.alert("Échec de l'inscription", res.error);
+    }
   };
 
   const handleForgot = () => setForgotSent(true);
-
-  const InputField = ({ label, icon, placeholder, value, onChange, secure, showToggle, onToggle, keyboardType, autoCapitalize }) => (
-    <View style={styles.inputGroup}>
-      <Text style={styles.sectionLabel}>{label}</Text>
-      <View style={styles.inputWrapper}>
-        {icon && <Feather name={icon} size={16} color="#7A8B89" style={styles.inputIcon} />}
-        <TextInput
-          style={[styles.input, { flex: 1 }]}
-          placeholder={placeholder}
-          placeholderTextColor="#AABAB8"
-          value={value}
-          onChangeText={onChange}
-          secureTextEntry={secure && !showToggle}
-          keyboardType={keyboardType || 'default'}
-          autoCapitalize={autoCapitalize || 'none'}
-        />
-        {secure && (
-          <TouchableOpacity onPress={onToggle} style={{ padding: 4 }}>
-            <Feather name={showToggle ? 'eye-off' : 'eye'} size={16} color="#7A8B89" />
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
 
   const renderLogin = () => (
     <>
@@ -177,24 +198,19 @@ export default function Auth() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Header */}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Header Logo */}
           <View style={styles.logoSection}>
             <Text style={styles.logoText}>MOVO</Text>
-            <Text style={styles.tagline}>Gérez votre dossier locatif en toute transparence</Text>
+            <Text style={styles.tagline}>Plateforme d'évaluation & réputation locative</Text>
           </View>
 
-          {/* Decorative dots */}
+          {/* Dots Indicator */}
           <View style={styles.dotsRow}>
-            {['#4CAF50', '#C9E84F', '#182C2A'].map((c, i) => (
-              <View key={i} style={[styles.dot, { backgroundColor: c }]} />
-            ))}
+            <View style={[styles.dot, { backgroundColor: view === 'login' ? '#182C2A' : '#E2E8F0' }]} />
+            <View style={[styles.dot, { backgroundColor: view === 'register' ? '#182C2A' : '#E2E8F0' }]} />
+            <View style={[styles.dot, { backgroundColor: view === 'forgot' ? '#182C2A' : '#E2E8F0' }]} />
           </View>
 
           {/* Form Card */}

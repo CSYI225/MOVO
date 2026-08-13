@@ -1,48 +1,91 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Linking, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, fs } from '../Styles/global';
+import { fs } from '../Styles/global';
 import RatingStars from './RatingStars';
 
+import { useAuth } from '../context/AuthContext';
+
 const ReviewCard = ({ data, onValidate, onContest, showActions = true, status, onPress, compact = false }) => {
+  const { API_URL } = useAuth() || {};
+
+  const getFullFileUrl = (fileUrl) => {
+    if (!fileUrl) return null;
+    let url = fileUrl;
+    if (url.startsWith('/uploads')) {
+      const baseApi = (API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+      url = `${baseApi}${url}`;
+    } else if (url.includes('/uploads/')) {
+      const fileName = url.split('/uploads/').pop();
+      const baseApi = (API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+      url = `${baseApi}/uploads/${fileName}`;
+    }
+    return url;
+  };
+
+  const handleOpenAttachment = (url, nom) => {
+    const targetUrl = getFullFileUrl(url);
+    if (targetUrl) {
+      Linking.openURL(targetUrl).catch(() => Alert.alert('Erreur', `Impossible d'ouvrir ${nom}`));
+    } else {
+      Alert.alert('Fichier', nom || 'Pièce jointe');
+    }
+  };
+  const bailleurNom = data?.bailleur
+    ? `${data.bailleur.prenom || ''} ${data.bailleur.nom || ''}`.trim() || data.bailleur.email
+    : data?.location || 'Bailleur MOVO';
+
+  const bailleurInitiales = bailleurNom
+    ? bailleurNom.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+    : 'BL';
+
+  // Infos du bien
+  const typeBien = data?.type || data?.bien?.type || null;
+  const adresseBien = data?.adresse || data?.bien?.adresse || null;
+  const loyerBien = data?.price || data?.bien?.loyer || null;
+
+  // Contesté: si `status` local ou `dejaConteste` venant du backend
+  const isContested = status === 'contested' || data?.dejaConteste === true;
+  const isValidated = status === 'validated';
+
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.card}
       onPress={onPress}
       activeOpacity={onPress ? 0.9 : 1}
       disabled={!onPress}
     >
-      {/* Top Status Icon Badge */}
-      {status === 'validated' && (
+      {/* Status Badge */}
+      {isValidated && (
         <View style={styles.statusBadge}>
           <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
         </View>
       )}
-      {status === 'contested' && (
+      {isContested && (
         <View style={styles.statusBadge}>
           <Ionicons name="alert-circle" size={24} color="#FF5252" />
         </View>
       )}
 
-      {/* Date Header for compact mode */}
+      {/* Compact date header */}
       {compact && (
         <View style={styles.compactHeader}>
-          <Text style={styles.compactDateText}>{data?.date || "Mars 2024"}</Text>
+          <Text style={styles.compactDateText}>{data?.date || ''}</Text>
+          <RatingStars rating={data?.rating || 5} />
         </View>
       )}
 
-      {/* Report Header: Rounded Square Avatar, Name, Date/Stars (Hidden in compact mode) */}
+      {/* Full header: bailleur avatar + name + date */}
       {!compact && (
         <View style={styles.header}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>CS</Text>
+            <Text style={styles.avatarText}>{bailleurInitiales}</Text>
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>Coulibaly Sékou</Text>
-            <Text style={styles.userLocation}>{data?.location || "Abidjan, Cocody"}</Text>
+            <Text style={styles.userName}>{bailleurNom}</Text>
+            <Text style={styles.userLocation}>{data?.date || ''}</Text>
           </View>
           <View style={styles.dateInfo}>
-            <Text style={styles.dateText}>{data?.date || "Mars 2024"}</Text>
             <RatingStars rating={data?.rating || 5} style={styles.ratingStars} />
           </View>
         </View>
@@ -51,40 +94,68 @@ const ReviewCard = ({ data, onValidate, onContest, showActions = true, status, o
       {/* Section: Infos Bien */}
       <Text style={styles.sectionLabel}>Infos Bien</Text>
       <View style={styles.infoBienContainer}>
-        <View style={styles.infoItem}>
-          <Ionicons name="home-outline" size={14} color="#182C2A" />
-          <Text style={styles.infoItemText}>{data?.type || "Duplex"}</Text>
-        </View>
-        <View style={styles.infoItem}>
-          <Ionicons name="location-outline" size={14} color="#182C2A" />
-          <Text style={styles.infoItemText}>{data?.location || "Abidjan, Cocody"}</Text>
-        </View>
-        <View style={styles.infoItem}>
-          <Ionicons name="cash-outline" size={14} color="#182C2A" />
-          <Text style={styles.infoItemText}>{data?.price || "15 000 000 FCFA"}</Text>
-        </View>
+        {typeBien ? (
+          <View style={styles.infoItem}>
+            <Ionicons name="home-outline" size={14} color="#182C2A" />
+            <Text style={styles.infoItemText}>{typeBien}</Text>
+          </View>
+        ) : null}
+        {adresseBien ? (
+          <View style={styles.infoItem}>
+            <Ionicons name="location-outline" size={14} color="#182C2A" />
+            <Text style={styles.infoItemText} numberOfLines={1}>{adresseBien}</Text>
+          </View>
+        ) : null}
+        {loyerBien ? (
+          <View style={styles.infoItem}>
+            <Ionicons name="cash-outline" size={14} color="#182C2A" />
+            <Text style={styles.infoItemText}>{loyerBien}</Text>
+          </View>
+        ) : null}
+        {!typeBien && !adresseBien && !loyerBien && (
+          <Text style={{ fontSize: fs(11), color: '#94A3B8', fontStyle: 'italic' }}>Infos bien non disponibles</Text>
+        )}
       </View>
 
       {/* Section: Commentaire */}
       <Text style={styles.sectionLabel}>Commentaire</Text>
       <View style={styles.commentBox}>
         <Text style={styles.commentText}>
-          {data?.comment || data?.text || "Bon locataire, il paye toujours son loyer à temps."}
+          {data?.comment || data?.text || data?.commentaire || '—'}
         </Text>
       </View>
 
-      {/* Contestation Box (Displays only if contested) */}
-      {status === 'contested' && (
+      {/* Section: Pièces jointes */}
+      {data?.piecesJointes && data.piecesJointes.length > 0 && (
+        <>
+          <Text style={styles.sectionLabel}>Pièces jointes</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {data.piecesJointes.map(pj => (
+              <TouchableOpacity key={pj.id} style={styles.pieceJointeBox} onPress={() => handleOpenAttachment(pj.url, pj.nom)} activeOpacity={0.7}>
+                <Ionicons
+                  name={pj.type === 'pdf' || pj.type === 'document' ? 'document-text-outline' : 'image-outline'}
+                  size={20}
+                  color="#0F322B"
+                />
+                <Text style={styles.pieceJointeText} numberOfLines={1}>{pj.nom}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </>
+      )}
+
+      {/* Contestation notice */}
+      {isContested && (
         <View style={styles.contestationBox}>
           <Ionicons name="warning-outline" size={14} color="#F43F5E" />
-          <Text style={styles.contestationText}>Ce rapport a été contesté par le locataire</Text>
+          <Text style={styles.contestationText}>Ce rapport a été contesté</Text>
         </View>
       )}
 
-      {/* Actions Buttons (Valider / Contester) */}
-      {showActions && !status && (
+      {/* Actions: Valider / Contester */}
+      {showActions && !isContested && !isValidated && (
         <View style={styles.actionContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionValidate}
             onPress={onValidate}
             activeOpacity={0.7}
@@ -92,8 +163,8 @@ const ReviewCard = ({ data, onValidate, onContest, showActions = true, status, o
             <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" />
             <Text style={styles.actionValidateText}>Valider</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.actionContest}
             onPress={onContest}
             activeOpacity={0.7}
@@ -113,7 +184,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 20,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0', // Sleek flat double-border line
+    borderColor: '#E2E8F0',
     position: 'relative',
     marginBottom: 20,
   },
@@ -151,7 +222,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: fs(20),
+    fontSize: fs(18),
     fontWeight: '800',
     color: '#0F322B',
   },
@@ -173,12 +244,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
-  dateText: {
-    fontSize: fs(11),
-    color: '#94A3B8',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
   ratingStars: {
     marginTop: 2,
   },
@@ -193,11 +258,11 @@ const styles = StyleSheet.create({
   },
   infoBienContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
     backgroundColor: '#F8FAFC',
     padding: 12,
     borderRadius: 14,
-    gap: 8,
+    gap: 10,
   },
   infoItem: {
     flexDirection: 'row',
@@ -208,12 +273,13 @@ const styles = StyleSheet.create({
     fontSize: fs(11),
     fontWeight: '700',
     color: '#0F322B',
+    maxWidth: 100,
   },
   commentBox: {
     backgroundColor: '#F8FAFC',
     padding: 16,
     borderRadius: 14,
-    minHeight: 80,
+    minHeight: 60,
     justifyContent: 'center',
   },
   commentText: {
@@ -221,6 +287,23 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: '#334155',
     fontWeight: '500',
+  },
+  pieceJointeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F0FFF4',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#A5D6A7',
+  },
+  pieceJointeText: {
+    fontSize: fs(10),
+    color: '#0F322B',
+    fontWeight: '600',
+    maxWidth: 80,
   },
   contestationBox: {
     marginTop: 16,

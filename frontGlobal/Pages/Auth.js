@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   SafeAreaView, TextInput, StatusBar, Image,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { fs } from '../Styles/global';
 import { useAuth } from '../context/AuthContext';
 
 export default function Auth() {
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const [view, setView] = useState('login'); // 'login' | 'register' | 'forgot'
   const [role, setRole] = useState('landlord'); // 'landlord' | 'visitor'
 
@@ -29,22 +29,36 @@ export default function Auth() {
   // Forgot fields
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const getInitials = (name) => {
-    const parts = name.trim().split(' ');
-    return parts.length >= 2
-      ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
-      : name.slice(0, 2).toUpperCase();
+  const handleLogin = async () => {
+    if (!loginEmail || !loginPassword) {
+      Alert.alert('Erreur', 'Veuillez saisir votre email et votre mot de passe.');
+      return;
+    }
+    setLoading(true);
+    const res = await login(role, loginEmail, loginPassword);
+    setLoading(false);
+    if (!res.success) {
+      Alert.alert('Échec de la connexion', res.error);
+    }
   };
 
-  const handleLogin = () => {
-    const name = loginEmail ? loginEmail.split('@')[0].replace('.', ' ') : 'Coulibaly Sékou';
-    login(role, name, loginEmail || 's.coulibaly@movo.ci');
-  };
-
-  const handleRegister = () => {
-    const name = `${regNom || 'Coulibaly'} ${regPrenom || 'Sékou'}`.trim();
-    login(role, name, regEmail || 's.coulibaly@movo.ci');
+  const handleRegister = async () => {
+    if (!regNom || !regPrenom || !regEmail || !regPassword) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires.');
+      return;
+    }
+    if (regPassword !== regConfirm) {
+      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas.');
+      return;
+    }
+    setLoading(true);
+    const res = await register(role, regPrenom, regNom, regEmail, regPassword);
+    setLoading(false);
+    if (!res.success) {
+      Alert.alert("Échec de l'inscription", res.error);
+    }
   };
 
   const handleForgot = () => setForgotSent(true);

@@ -11,6 +11,7 @@ import Profil from './Pages/Profil';
 import DetailsAvis from './Pages/DetailsAvis';
 import ProfilPublic from './Pages/ProfilPublic';
 import Auth from './Pages/Auth';
+import ChangePassword from './Pages/ChangePassword';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 const Stack = createNativeStackNavigator();
@@ -25,14 +26,18 @@ function AppNavigator() {
       }}
     >
       {user?.isLoggedIn ? (
-        <>
-          <Stack.Screen name="Accueil" component={Accueil} />
-          <Stack.Screen name="Contestation" component={Contestation} />
-          <Stack.Screen name="Notifications" component={Notifications} />
-          <Stack.Screen name="Profil" component={Profil} />
-          <Stack.Screen name="DetailsAvis" component={DetailsAvis} />
-          <Stack.Screen name="ProfilPublic" component={ProfilPublic} />
-        </>
+        user?.doitChangerMdp ? (
+          <Stack.Screen name="ChangePassword" component={ChangePassword} />
+        ) : (
+          <>
+            <Stack.Screen name="Accueil" component={Accueil} />
+            <Stack.Screen name="Contestation" component={Contestation} />
+            <Stack.Screen name="Notifications" component={Notifications} />
+            <Stack.Screen name="Profil" component={Profil} />
+            <Stack.Screen name="DetailsAvis" component={DetailsAvis} />
+            <Stack.Screen name="ProfilPublic" component={ProfilPublic} />
+          </>
+        )
       ) : (
         <Stack.Screen name="Auth" component={Auth} />
       )}

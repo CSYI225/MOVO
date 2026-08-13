@@ -13,6 +13,13 @@ import ReportModal from '../../components/Modals/ReportModal';
 import ReportDetailModal from '../../components/Modals/ReportDetailModal';
 import './Locataires.css';
 
+const formatRating = (num) => {
+  const val = Number(num);
+  if (isNaN(val)) return '5';
+  if (Number.isInteger(val)) return String(val);
+  return val.toFixed(1).replace('.', ',');
+};
+
 const LocataireDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -25,12 +32,32 @@ const LocataireDetail = () => {
   const [isPendingVacate, setIsPendingVacate] = React.useState(false);
   const [refresh, setRefresh] = React.useState(0);
   
-  // Search in landlord's tenants first, then in the whole platform database
-  const isMyTenant = tenants.some(t => t.id === parseInt(id));
-  const tenant = tenants.find(t => t.id === parseInt(id)) || 
-                 allPlatformUsers.find(u => u.id === parseInt(id));
+  const [platformUser, setPlatformUser] = React.useState(null);
 
-  if (!tenant) return <div className="p-6">Locataire non trouvé.</div>;
+  // Search in landlord's tenants first, then in whole platform database
+  const isMyTenant = tenants.some(t => String(t.id) === String(id));
+  const tenant = tenants.find(t => String(t.id) === String(id)) || 
+                 (allPlatformUsers || []).find(u => String(u.id) === String(id)) ||
+                 platformUser;
+
+  React.useEffect(() => {
+    if (!tenant && id) {
+      const token = localStorage.getItem('movo_bailleur_token');
+      fetch(`http://localhost:5000/api/locataires/recherche?q=${encodeURIComponent(id)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.locataires && data.locataires.length > 0) {
+          const found = data.locataires.find(l => String(l.id) === String(id)) || data.locataires[0];
+          setPlatformUser(found);
+        }
+      })
+      .catch(console.error);
+    }
+  }, [id, tenant]);
+
+  if (!tenant) return <div className="p-6" style={{ padding: '40px', textAlign: 'center' }}>Recherche du locataire...</div>;
 
   const currentProperty = properties.find(p => p.name === tenant.property);
   const currentUnit = currentProperty?.units?.find(u => u.number === tenant.unitNumber);
@@ -42,7 +69,7 @@ const LocataireDetail = () => {
   const residesInMyProperty = isMyTenant && !!tenant.property && !!currentProperty;
 
   const existingReport = reports.find(
-    r => r.tenantName === tenant?.name && r.propertyName === currentProperty?.name
+    r => String(r.tenantId) === String(tenant?.id) || r.tenantName === tenant?.name
   );
 
   return (
@@ -55,10 +82,10 @@ const LocataireDetail = () => {
         <div className="header-actions">
           <button className="btn-outline">Contacter</button>
           
-          {residesInMyProperty && (!tenant.reports || tenant.reports.length === 0) && (
+          {isMyTenant && (
             <button className="btn-evaluate" onClick={() => setIsReportModalOpen(true)}>
               <FileText size={18} />
-              <span>Évaluer le locataire</span>
+              <span>{existingReport ? 'Modifier le rapport' : 'Évaluer le locataire'}</span>
             </button>
           )}
 
@@ -78,13 +105,13 @@ const LocataireDetail = () => {
           </div>
           <div className="profile-meta">
             <h1>{tenant.name}</h1>
-            {residesInMyProperty && (
+            {isMyTenant && (
               <div className={`relation-status-badge ${
-                tenant.status === 'Vérifié' ? 'status-check' : 
-                tenant.status === 'Refusé' ? 'status-refused-bg' : 'status-unverified-bg'
+                (tenant.relation || tenant.status) === 'Vérifié' ? 'status-check' : 
+                (tenant.relation || tenant.status) === 'Refusé' ? 'status-refused-bg' : 'status-unverified-bg'
               }`}>
                 <ShieldCheck size={18} />
-                <span>Statut : {tenant.status}</span>
+                <span>Statut : {tenant.relation || tenant.status || 'En attente'}</span>
               </div>
             )}
           </div>
@@ -94,7 +121,7 @@ const LocataireDetail = () => {
             <span className="label">Note globale</span>
             <div className="rating-large">
               <Star size={24} fill="#F59E0B" color="#F59E0B" />
-              <span>{getTenantScore(tenant.id)}</span>
+              <span>{formatRating(getTenantScore(tenant.id))}</span>
             </div>
           </div>
         </div>
@@ -286,7 +313,19 @@ const LocataireDetail = () => {
         isOpen={isDetailOpen} 
         report={selectedReport} 
         onClose={() => setIsDetailOpen(false)} 
-        onEdit={(id, comment) => console.log('Edit report', id, comment)}
+        onEdit={async (id, changes) => {
+          const updatedReport = {
+            ...selectedReport,
+            id,
+            comment: changes.comment,
+            content: changes.comment,
+            rating: changes.rating,
+            regularity: changes.regularity,
+            attachments: changes.attachments,
+          };
+          if (typeof updateReport === 'function') await updateReport(updatedReport);
+          setIsDetailOpen(false);
+        }}
       />
     </div>
   );

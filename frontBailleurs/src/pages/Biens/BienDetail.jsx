@@ -6,7 +6,7 @@ import {
   ChevronRight, Star, ExternalLink,
   Bed, Hash, Search, SlidersHorizontal, Plus, Trash2, Edit
 } from 'lucide-react';
-import { properties, tenants, reports } from '../../data/mockData.jsx';
+import { useAuth } from '../../context/AuthContext';
 import ReportModal from '../../components/Modals/ReportModal';
 import PropertyModal from '../../components/Modals/PropertyModal';
 import UnitModal from '../../components/Modals/UnitModal';
@@ -19,6 +19,7 @@ import './Biens.css';
 const BienDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { properties, tenants, reports, setTenants, setProperties, user, API_URL } = useAuth();
   const [isReportModalOpen, setIsReportModalOpen] = React.useState(false);
   const [selectedTenant, setSelectedTenant] = React.useState(null);
   const [searchTermUnits, setSearchTermUnits] = React.useState('');
@@ -33,11 +34,18 @@ const BienDetail = () => {
   const [pendingTenant, setPendingTenant] = React.useState(null);
   const [refresh, setRefresh] = React.useState(0);
   
-  const property = properties.find(p => p.id === parseInt(id));
+  const safeProperties = properties || [];
+  const safeTenants = tenants || [];
+  const safeReports = reports || [];
 
-  if (!property) return <div className="p-6">Bien non trouvé.</div>;
+  const property = safeProperties.find(p => String(p.id) === String(id));
 
-  const currentTenantsData = tenants.filter(t => property.currentTenants?.includes(t.id));
+  if (!property) return <div className="p-6" style={{ padding: '40px', textAlign: 'center' }}>Bien non trouvé.</div>;
+
+  const currentTenantsData = safeTenants.filter(t => 
+    t.property === property.name || 
+    (property.currentTenants || []).some(ct => String(ct) === String(t.id) || String(ct?.id) === String(t.id))
+  );
   const occupiedCount = property.units ? property.units.filter(u => u.tenantId !== null && u.tenantId !== undefined).length : currentTenantsData.length;
   
   const historyToDisplay = property?.type === 'Immeuble' && property.units 
@@ -349,27 +357,82 @@ const BienDetail = () => {
           setIsTenantModalOpen(false);
           setIsManualModalOpen(true);
         }}
-        onSelect={(user) => {
+        onSelect={async (selectedUser) => {
           setIsTenantModalOpen(false);
+          if (selectedUser.estActif || selectedUser.estActifAilleurs || selectedUser.bienActuel) {
+            const nomBien = selectedUser.bienActuel?.nom || 'un autre bien';
+            alert(`Action impossible : ${selectedUser.name || 'Le locataire'} occupe déjà le bien « ${nomBien} ». Un locataire ne peut pas avoir deux baux actifs simultanément.`);
+            return;
+          }
           if (property.type === 'Immeuble') {
-            setPendingTenant(user);
+            setPendingTenant(selectedUser);
             setIsPropSelectionOpen(true);
           } else {
-            // Assign directly if not Immeuble
-            if (!property.currentTenants) property.currentTenants = [];
-            if (!property.currentTenants.includes(user.id)) property.currentTenants.push(user.id);
-            const existingIdx = tenants.findIndex(t => t.id === user.id);
-            if (existingIdx === -1) {
-              tenants.push({ ...user, id: user.id || Date.now(), property: property.name, unitNumber: null, status: 'Non-vérifié', occupancyDate: new Date().toISOString().split('T')[0] });
-            } else {
-              tenants[existingIdx].property = property.name;
-              tenants[existingIdx].unitNumber = null;
-              tenants[existingIdx].occupancyDate = new Date().toISOString().split('T')[0];
-            }
-            property.occupants = property.currentTenants.length;
-            property.status = 'Occupé';
+            const tenantName = selectedUser.name || `${selectedUser.prenom || ''} ${selectedUser.nom || ''}`.trim() || selectedUser.email;
+            const tenantObj = {
+              id: selectedUser.id,
+              name: tenantName,
+              prenom: selectedUser.prenom,
+              nom: selectedUser.nom,
+              email: selectedUser.email,
+              telephone: selectedUser.telephone,
+              property: property.name,
+              status: 'Actif',
+              occupancyDate: new Date().toISOString().split('T')[0]
+            };
+            // Update local state
+            setTenants(prev => {
+              const existingIdx = (prev || []).findIndex(t => String(t.id) === String(selectedUser.id));
+              if (existingIdx === -1) {
+                return [tenantObj, ...(prev || [])];
+              } else {
+                return (prev || []).map(t => String(t.id) === String(selectedUser.id) ? { ...t, property: property.name, isFormer: false, status: 'Actif' } : t);
+              }
+            });
+            setProperties(prev => (prev || []).map(p => {
+              if (String(p.id) === String(property.id)) {
+                const updatedTenants = p.currentTenants ? [...p.currentTenants] : [];
+                if (!updatedTenants.some(id => String(id) === String(selectedUser.id))) {
+                  updatedTenants.push(selectedUser.id);
+                }
+                return { ...p, currentTenants: updatedTenants, occupants: updatedTenants.length, status: 'Occupé' };
+              }
+              return p;
+            }));
             setRefresh(r => r + 1);
-            alert(`Locataire ${user.name} assigné avec succès !`);
+            const token = user?.token || localStorage.getItem('movo_bailleur_token');
+            try {
+              const assignResp = await fetch(`${API_URL}/baux/assigner`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                  bienId: property.id,
+                  locataireId: selectedUser.id,
+                  prixParMois: property.price ? String(property.price).replace(/[^\d.]/g, '') : '0',
+                }),
+              });
+              const assignData = await assignResp.json();
+              if (!assignResp.ok) {
+                alert(`Impossible d'assigner le locataire : ${assignData.message}`);
+                return;
+              }
+              // Succes: mettre a jour l'etat local
+              setProperties(prev => (prev || []).map(p => {
+                if (String(p.id) === String(property.id)) {
+                  const updatedTenants = p.currentTenants ? [...p.currentTenants] : [];
+                  if (!updatedTenants.some(id => String(id) === String(selectedUser.id))) {
+                    updatedTenants.push(selectedUser.id);
+                  }
+                  return { ...p, currentTenants: updatedTenants, occupants: updatedTenants.length, status: 'Occupe' };
+                }
+                return p;
+              }));
+              setRefresh(r => r + 1);
+              alert(`Locataire ${tenantName} assigne avec succes ! Demande de liaison envoyee au locataire.`);
+            } catch (err) {
+              console.error('Erreur assignation bail :', err);
+              alert('Erreur lors de la connexion au serveur.');
+            }
           }
         }}
         title="Assigner un locataire au bien"
@@ -414,6 +477,7 @@ const BienDetail = () => {
         onClose={() => { setIsPropSelectionOpen(false); setPendingTenant(null); }}
         tenantName={pendingTenant?.name}
         fixedPropertyId={property.id}
+        properties={properties || [property]}
         onConfirm={(selProp, selUnit, occupancyDate) => {
           if (!property.currentTenants) property.currentTenants = [];
           if (!property.currentTenants.includes(pendingTenant.id)) property.currentTenants.push(pendingTenant.id);

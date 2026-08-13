@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, FlatList, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/Header';
@@ -10,15 +10,21 @@ const FILTERS = ['Tous', 'Non lu', 'Validés', 'Contestés'];
 
 export default function Home({ navigation }) {
   const [activeFilter, setActiveFilter] = useState('Tous');
-  const { reviews, updateReviewStatus } = useAuth();
+  const { reviews, updateReviewStatus, fetchMesAvis } = useAuth();
+
+  useEffect(() => {
+    if (fetchMesAvis) fetchMesAvis();
+  }, []);
 
   const handleValidate = (id) => {
     updateReviewStatus(id, 'validated');
   };
 
-  const handleContest = (id) => {
+  const handleContest = (id, reviewObj) => {
+    const targetReview = reviewObj || reviews.find(r => r.id === id);
     navigation.navigate('Contestation', {
       reviewId: id,
+      review: targetReview,
       onSubmit: () => {
         updateReviewStatus(id, 'contested');
       }
@@ -75,7 +81,7 @@ export default function Home({ navigation }) {
           <ReviewCard
             data={item}
             status={item.status}
-            onContest={() => handleContest(item.id)}
+            onContest={() => handleContest(item.id, item)}
             onValidate={() => handleValidate(item.id)}
             onPress={() => navigation.navigate('DetailsAvis', {
               review: item,

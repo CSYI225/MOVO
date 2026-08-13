@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import Header from '../components/Header';
 import { COLORS, fs } from '../Styles/global';
@@ -7,12 +7,44 @@ import UserAvatar from '../components/UserAvatar';
 import RatingStars from '../components/RatingStars';
 import { useAuth } from '../context/AuthContext';
 
+const formatRating = (num) => {
+  const val = Number(num);
+  if (isNaN(val)) return '5';
+  if (Number.isInteger(val)) return String(val);
+  return val.toFixed(1).replace('.', ',');
+};
+
 export default function Profil({ navigation }) {
-  const { logout, getTenantScore } = useAuth();
+  const { user, logout, getTenantScore, bienActuel, updateUserProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [nom, setNom] = useState('Coulibaly');
-  const [prenoms, setPrenoms] = useState('Sékou Yéfougn-gnigui');
+  const [loading, setLoading] = useState(false);
+
+  const [nom, setNom] = useState(user?.nom || (user?.name ? user.name.split(' ').pop() : 'Locataire'));
+  const [prenoms, setPrenoms] = useState(user?.prenom || (user?.name ? user.name.split(' ').slice(0, -1).join(' ') : ''));
+  const [email, setEmail] = useState(user?.email || '');
+  const [motDePasse, setMotDePasse] = useState('');
+
   const tenantScore = getTenantScore();
+  const initials = `${(prenoms && prenoms[0]) || ''}${(nom && nom[0]) || ''}`.toUpperCase() || 'MO';
+
+  const handleSave = async () => {
+    if (!isEditing) {
+      setIsEditing(true);
+      return;
+    }
+
+    setLoading(true);
+    const res = await updateUserProfile({ nom, prenom: prenoms, email, motDePasse: motDePasse || undefined });
+    setLoading(false);
+
+    if (res.success) {
+      Alert.alert("Succès", "Vos informations ont été mises à jour avec succès.");
+      setIsEditing(false);
+      setMotDePasse('');
+    } else {
+      Alert.alert("Erreur", res.error || "Impossible de mettre à jour le profil.");
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -25,15 +57,15 @@ export default function Profil({ navigation }) {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Profile Info Header */}
         <View style={styles.profileHeader}>
-          <UserAvatar initials="CS" size={72} color="#C9E84F" textColor="#0F322B" />
+          <UserAvatar initials={initials} size={72} color="#C9E84F" textColor="#0F322B" />
           <View style={styles.profileMainInfo}>
-            <Text style={styles.profileName}>{nom} {prenoms.split(' ')[0]}</Text>
+            <Text style={styles.profileName}>{`${prenoms} ${nom}`.trim() || user?.email}</Text>
             <View style={styles.labelLocataire}>
-              <Text style={styles.labelLocataireText}>Locataire Vérifié</Text>
+              <Text style={styles.labelLocataireText}>Locataire MOVO</Text>
             </View>
           </View>
           <View style={styles.ratingBox}>
-            <Text style={styles.ratingText}>{tenantScore.toFixed(1).replace('.', ',')}</Text>
+            <Text style={styles.ratingText}>{formatRating(tenantScore)}</Text>
             <RatingStars rating={tenantScore} />
           </View>
           
@@ -65,7 +97,7 @@ export default function Profil({ navigation }) {
                 placeholderTextColor="#7A8B89"
               />
             ) : (
-              <Text style={styles.rowValue}>{nom}</Text>
+              <Text style={styles.rowValue}>{nom || 'Non renseigné'}</Text>
             )}
           </View>
           
@@ -80,23 +112,56 @@ export default function Profil({ navigation }) {
                 placeholderTextColor="#7A8B89"
               />
             ) : (
-              <Text style={styles.rowValue}>{prenoms}</Text>
+              <Text style={styles.rowValue}>{prenoms || 'Non renseigné'}</Text>
+            )}
+          </View>
+
+          <View style={styles.cardRow}>
+            <Text style={styles.rowLabel}>Email</Text>
+            {isEditing ? (
+              <TextInput
+                style={styles.rowInput}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Email"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                placeholderTextColor="#7A8B89"
+              />
+            ) : (
+              <Text style={styles.rowValue}>{email || user?.email || 'Non renseigné'}</Text>
             )}
           </View>
           
           <View style={styles.cardRow}>
             <Text style={styles.rowLabel}>Mot de passe</Text>
-            <Text style={[styles.rowValue, { color: '#4CAF50' }]}>••••••••</Text>
+            {isEditing ? (
+              <TextInput
+                style={styles.rowInput}
+                value={motDePasse}
+                onChangeText={setMotDePasse}
+                placeholder="Nouveau mot de passe (optionnel)"
+                secureTextEntry
+                placeholderTextColor="#7A8B89"
+              />
+            ) : (
+              <Text style={[styles.rowValue, { color: '#4CAF50' }]}>••••••••</Text>
+            )}
           </View>
           
           <TouchableOpacity 
             style={[styles.modifierButton, isEditing && styles.saveButton]} 
-            onPress={() => setIsEditing(!isEditing)}
+            onPress={handleSave}
+            disabled={loading}
             activeOpacity={0.7}
           >
-            <Text style={[styles.modifierButtonText, isEditing && styles.saveButtonText]}>
-              {isEditing ? "Enregistrer les modifications" : "Modifier les informations"}
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="#0F322B" size="small" />
+            ) : (
+              <Text style={[styles.modifierButtonText, isEditing && styles.saveButtonText]}>
+                {isEditing ? "Enregistrer les modifications" : "Modifier les informations"}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -106,27 +171,46 @@ export default function Profil({ navigation }) {
             <Ionicons name="home-outline" size={20} color="#0F322B" />
             <Text style={styles.cardTitle}>Infos Bien Actuel</Text>
           </View>
-          <View style={styles.cardRow}>
-            <Text style={styles.rowLabel}>Nom bailleur</Text>
-            <Text style={styles.rowValue}>Coulibaly</Text>
-          </View>
-          <View style={styles.cardRow}>
-            <Text style={styles.rowLabel}>Prénoms bailleur</Text>
-            <Text style={styles.rowValue}>Sékou Yéfougn-gnigui</Text>
-          </View>
-          <View style={styles.cardRow}>
-            <Text style={styles.rowLabel}>Type maison</Text>
-            <Text style={styles.rowValue}>Duplex</Text>
-          </View>
-          <View style={styles.cardRow}>
-            <Text style={styles.rowLabel}>Localisation</Text>
-            <Text style={styles.rowValue}>Abidjan, Cocody</Text>
-          </View>
-          <View style={styles.cardRow}>
-            <Text style={styles.rowLabel}>Prix mensuel</Text>
-            <Text style={styles.rowValue}>15 000 000 FCFA</Text>
-          </View>
+
+          {bienActuel ? (
+            <View>
+              <View style={styles.cardRow}>
+                <Text style={styles.rowLabel}>Bien</Text>
+                <Text style={styles.rowValue}>{bienActuel.nom}</Text>
+              </View>
+              <View style={styles.cardRow}>
+                <Text style={styles.rowLabel}>Type</Text>
+                <Text style={styles.rowValue}>{bienActuel.type}</Text>
+              </View>
+              <View style={styles.cardRow}>
+                <Text style={styles.rowLabel}>Adresse</Text>
+                <Text style={styles.rowValue}>{bienActuel.adresse}</Text>
+              </View>
+              <View style={styles.cardRow}>
+                <Text style={styles.rowLabel}>Loyer</Text>
+                <Text style={[styles.rowValue, { color: '#0F322B', fontWeight: '700' }]}>{bienActuel.loyer}</Text>
+              </View>
+              <View style={styles.cardRow}>
+                <Text style={styles.rowLabel}>Bailleur</Text>
+                <Text style={styles.rowValue}>{bienActuel.bailleur}</Text>
+              </View>
+              <View style={[styles.cardRow, { borderBottomWidth: 0 }]}>
+                <Text style={styles.rowLabel}>Statut</Text>
+                <View style={{ backgroundColor: '#E8F5E9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+                  <Text style={{ color: '#4CAF50', fontWeight: '700', fontSize: fs(12) }}>{bienActuel.statut}</Text>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View style={{ alignItems: 'center', paddingVertical: 16 }}>
+              <Ionicons name="information-circle-outline" size={32} color="#7A8B89" style={{ marginBottom: 6 }} />
+              <Text style={{ fontSize: fs(12), color: '#7A8B89', fontWeight: '600', textAlign: 'center' }}>
+                Aucun bien actuellement associé.
+              </Text>
+            </View>
+          )}
         </View>
+
         {/* Déconnexion */}
         <TouchableOpacity style={styles.logoutButton} activeOpacity={0.7} onPress={logout}>
           <Ionicons name="log-out-outline" size={20} color="#FF5252" style={styles.logoutIcon} />

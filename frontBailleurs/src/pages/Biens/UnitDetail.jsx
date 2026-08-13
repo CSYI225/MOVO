@@ -6,7 +6,7 @@ import {
   ChevronRight, Star, ExternalLink,
   Bed, Hash, Plus, UserPlus, Trash2, Edit
 } from 'lucide-react';
-import { properties, tenants, reports } from '../../data/mockData.jsx';
+import { useAuth } from '../../context/AuthContext';
 import ReportModal from '../../components/Modals/ReportModal';
 import UnitModal from '../../components/Modals/UnitModal';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal';
@@ -17,6 +17,7 @@ import './Biens.css';
 const UnitDetail = () => {
   const { id, unitId } = useParams();
   const navigate = useNavigate();
+  const { properties, tenants, reports } = useAuth();
   const [isReportModalOpen, setIsReportModalOpen] = React.useState(false);
   const [selectedTenant, setSelectedTenant] = React.useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
@@ -25,10 +26,13 @@ const UnitDetail = () => {
   const [isManualModalOpen, setIsManualModalOpen] = React.useState(false);
   const [refresh, setRefresh] = React.useState(0);
   
-  const property = properties.find(p => p.id === parseInt(id));
-  const unit = property?.units?.find(u => u.id === parseInt(unitId));
+  const safeProperties = properties || [];
+  const safeTenants = tenants || [];
 
-  if (!property || !unit) return <div className="p-6">Unité non trouvée.</div>;
+  const property = safeProperties.find(p => String(p.id) === String(id));
+  const unit = property?.units?.find(u => String(u.id) === String(unitId));
+
+  if (!property || !unit) return <div className="p-6" style={{ padding: '40px', textAlign: 'center' }}>Unité non trouvée.</div>;
 
   const tenant = tenants.find(t => t.id === unit.tenantId);
 

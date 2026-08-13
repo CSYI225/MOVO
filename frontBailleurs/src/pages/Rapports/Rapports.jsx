@@ -5,18 +5,15 @@ import {
   MapPin, DollarSign, ChevronDown, X,
   Search as SearchIcon, AlertCircle
 } from 'lucide-react';
-import { reports, tenants } from '../../data/mockData';
+import { useAuth } from '../../context/AuthContext';
 import ReportModal from '../../components/Modals/ReportModal';
 import ReportDetailModal from '../../components/Modals/ReportDetailModal';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal';
 import TenantSelectionModal from '../../components/Modals/TenantSelectionModal';
 import './Rapports.css';
 
-
-
-
-
 const Rapports = () => {
+  const { reports, updateReport, fetchMesAvis, user } = useAuth();
   const [selectedReport, setSelectedReport] = useState(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isTenantSelectOpen, setIsTenantSelectOpen] = useState(false);
@@ -35,7 +32,7 @@ const Rapports = () => {
       const matchesFilter = filterStatus === 'Tous' || r.status === filterStatus;
       return matchesSearch && matchesFilter;
     });
-  }, [searchTerm, filterStatus, refresh]);
+  }, [reports, searchTerm, filterStatus, refresh]);
 
   const handleOpenDetail = (report) => {
     setSelectedReport(report);
@@ -124,10 +121,10 @@ const Rapports = () => {
                 <div className="report-avatar">{report.tenantName?.charAt(0) || '?'}</div>
                 <div className="report-user-info">
                   <h4>{report.tenantName}</h4>
-                  <p>{report.location}</p>
+                  <p>{report.tenantEmail || ''}</p>
                 </div>
                 <div className="report-date-stars">
-                  <span className="date-text">{report.date}</span>
+                  <span className="date-text">{report.publieLe ? new Date(report.publieLe).toLocaleDateString('fr-FR') : report.date || ''}</span>
                   <div className="stars-row">
                     {[1, 2, 3, 4, 5].map(s => (
                       <Star key={s} size={12} fill={report.rating >= s ? "#FFA000" : "none"} color="#FFA000" />
@@ -140,22 +137,23 @@ const Rapports = () => {
               <div className="report-info-bien">
                 <div className="info-item">
                   <Home size={14} color="#003366" />
-                  <span>{report.propertyType}</span>
+                  <span>{report.bien?.type || report.propertyType || '—'}</span>
                 </div>
                 <div className="info-item">
                   <MapPin size={14} color="#003366" />
-                  <span>{report.propertyName}</span>
+                  <span>{report.bien?.adresse || report.propertyName || '—'}</span>
                 </div>
                 <div className="info-item">
                   <DollarSign size={14} color="#003366" />
-                  <span>{report.price}</span>
+                  <span>{report.bien?.loyer || report.price || '—'}</span>
                 </div>
               </div>
 
               <div className="report-section-label">Commentaire</div>
               <div className="report-comment-box">
-                <p>{report.comment}</p>
+                <p>{report.comment || report.commentaire || report.content}</p>
               </div>
+
 
               {report.tenantResponse && (
                 <div className="contestation-box-sm">
@@ -182,13 +180,24 @@ const Rapports = () => {
         isOpen={isDetailOpen}
         report={selectedReport}
         onClose={() => setIsDetailOpen(false)}
-        onEdit={(id, comment) => {
-           console.log('Edit report', id, comment);
-           const idx = reports.findIndex(r => r.id === id);
-           if (idx > -1) {
-             reports[idx].comment = comment;
-             setRefresh(r => r + 1);
+        onEdit={async (id, changes) => {
+           // changes = { comment, rating, regularity, attachments }
+           const updatedReport = {
+             ...selectedReport,
+             id,
+             comment: changes.comment,
+             content: changes.comment,
+             rating: changes.rating,
+             regularity: changes.regularity,
+             attachments: changes.attachments,
+           };
+           await updateReport(updatedReport);
+           // Refresh reports from backend
+           if (fetchMesAvis && user?.token && user?.id) {
+             await fetchMesAvis(user.token, user.id);
            }
+           setIsDetailOpen(false);
+           setRefresh(r => r + 1);
         }}
       />
 

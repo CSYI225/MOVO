@@ -5,18 +5,22 @@ import {
   User, Star, FileText, AlertTriangle,
   Calendar, CheckCircle
 } from 'lucide-react';
-import { tenants, reports, properties } from '../../data/mockData';
+import { useAuth } from '../../context/AuthContext';
 import ReportDetailModal from '../../components/Modals/ReportDetailModal';
 import './Locataires.css';
 
 const TenantHistoryDetail = () => {
   const { id, historyId } = useParams();
   const navigate = useNavigate();
+  const { tenants, reports, properties } = useAuth();
   const [isDetailOpen, setIsDetailOpen] = React.useState(false);
   const [localReport, setLocalReport] = React.useState(null);
   
-  const tenant = tenants.find(t => t.id === parseInt(id));
-  const historyEntry = tenant?.history?.find(h => h.id === parseInt(historyId));
+  const safeTenants = tenants || [];
+  const safeReports = reports || [];
+
+  const tenant = safeTenants.find(t => String(t.id) === String(id));
+  const historyEntry = tenant?.history?.find(h => String(h.id) === String(historyId));
   
   // Find report for this history entry (simulation)
   // In a real app, we would match by property and tenant

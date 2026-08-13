@@ -5,7 +5,7 @@ import './Auth.css';
 import LogoMovo from '../../Images/logo.png';
 
 const Auth = () => {
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const [view, setView] = useState('login'); // 'login' | 'register' | 'forgot'
 
   // Input states
@@ -15,15 +15,31 @@ const Auth = () => {
   const [prenom, setPrenom] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage('');
+
     if (view === 'login') {
-      const displayName = email ? email.split('@')[0].replace('.', ' ') : 'Coulibaly Sékou';
-      login(displayName, email || 'sekou.coulibaly@email.com');
+      setLoading(true);
+      const res = await login(email, password);
+      setLoading(false);
+      if (!res.success) {
+        setErrorMessage(res.error);
+      }
     } else if (view === 'register') {
-      const displayName = `${prenom} ${nom}`.trim() || 'Coulibaly Sékou';
-      login(displayName, email || 'sekou.coulibaly@email.com');
+      if (password !== confirmPassword) {
+        setErrorMessage('Les mots de passe ne correspondent pas.');
+        return;
+      }
+      setLoading(true);
+      const res = await register(prenom, nom, email, password);
+      setLoading(false);
+      if (!res.success) {
+        setErrorMessage(res.error);
+      }
     } else {
       setForgotSent(true);
     }
@@ -44,6 +60,12 @@ const Auth = () => {
         </div>
 
         <div className="auth-form-section">
+          {errorMessage && (
+            <div className="auth-error-banner" style={{ backgroundColor: '#FEE2E2', color: '#DC2626', padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: '500' }}>
+              {errorMessage}
+            </div>
+          )}
+
           {view === 'forgot' && (
             <button className="auth-back-btn" onClick={() => { setView('login'); setForgotSent(false); }}>
               <ChevronLeft size={16} />

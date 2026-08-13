@@ -1,27 +1,63 @@
-import React, { useState, useMemo } from 'react';
-import { X, Search as SearchIcon, ChevronDown } from 'lucide-react';
-import { tenants, allPlatformUsers } from '../../data/mockData';
+import React, { useState, useEffect } from 'react';
+import { X, Search as SearchIcon, ChevronDown, Loader } from 'lucide-react';
 
-const TenantSelectionModal = ({ isOpen, onClose, onSelect, onManualAdd, title = "Sélectionner un locataire" }) => {
+const TenantSelectionModal = ({ isOpen, onClose, onSelect, onManualAdd, title = "Sélectionner un locataire", token }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
 
-  const filteredUsers = useMemo(() => {
-    // We search through ALL platform users, not just current ones
-    const source = allPlatformUsers && allPlatformUsers.length > 0 ? allPlatformUsers : tenants;
-    
-    return (source || []).map(u => {
-      // Check if user is already in our tenants list and assigned
-      const existingTenant = tenants.find(t => t.id === u.id);
-      const isAssigned = existingTenant ? !!existingTenant.property : false;
-      return { ...u, isAssigned, currentProp: existingTenant?.property };
-    }).filter(t =>
-      t.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.phone?.includes(searchTerm)
-    );
-  }, [searchTerm]);
+  const authToken = token || localStorage.getItem('movo_bailleur_token');
+
+  // Recherche automatique dès l'ouverture et à chaque frappe
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const qParam = searchTerm.trim();
+        const response = await fetch(
+          `http://localhost:5000/api/locataires/recherche?q=${encodeURIComponent(qParam)}`,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${authToken}`,
+            },
+          }
+        );
+        const data = await response.json();
+        setResults(data.locataires || []);
+      } catch (err) {
+        console.error('Erreur de recherche :', err);
+        setResults([]);
+      } finally {
+        setLoading(false);
+        setSearched(true);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, isOpen, authToken]);
+
+  // Réinitialiser à la fermeture
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchTerm('');
+      setResults([]);
+      setSearched(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const getInitials = (name) => {
+    if (!name) return '?';
+    const parts = name.trim().split(' ');
+    return parts.length >= 2
+      ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+      : name.slice(0, 2).toUpperCase();
+  };
 
   return (
     <div className="modal-overlay">
@@ -30,50 +66,63 @@ const TenantSelectionModal = ({ isOpen, onClose, onSelect, onManualAdd, title = 
           <h2>{title}</h2>
           <button className="btn-close-v2" onClick={onClose}><X size={20} /></button>
         </div>
-        
+
         <div className="modal-body-selection">
           <div className="search-box-modal-v2">
             <SearchIcon size={18} color="#0F322B" />
             <input
               type="text"
-              placeholder="Rechercher par nom, email ou téléphone (Global)..."
+              placeholder="Rechercher par nom, email ou téléphone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               autoFocus
             />
+            {loading && <Loader size={16} color="#0F322B" style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }} />}
           </div>
-          
+
           <div className="tenants-list-selection-v2">
-            {filteredUsers.length > 0 ? (
-              filteredUsers.map(user => (
-                <div 
-                  key={user.id} 
-                  className={`tenant-select-item-v2 ${user.isAssigned ? 'item-disabled' : ''}`}
-                  onClick={() => !user.isAssigned && onSelect(user)}
+            {/* Chargement */}
+            {loading && (
+              <div style={{ padding: '32px', textAlign: 'center', color: '#94A3B8', fontSize: '14px' }}>
+                Chargement des locataires...
+              </div>
+            )}
+
+            {/* Résultats trouvés */}
+            {!loading && results.length > 0 && (
+              results.map(user => (
+                <div
+                  key={user.id}
+                  className="tenant-select-item-v2"
+                  onClick={() => onSelect(user)}
                 >
-                  <div className="avatar-v2">{user.initials || user.name.charAt(0)}</div>
+                  <div className="avatar-v2">{getInitials(user.name)}</div>
                   <div className="item-info-v2">
                     <h4>{user.name}</h4>
-                    <p>{user.email}</p>
-                    {user.isAssigned && <span className="status-indicator-mini" style={{ color: '#F59E0B', fontSize: '11px', fontWeight: 600 }}>Déjà occupé ({user.currentProp})</span>}
+                    <p>{user.email || user.telephone}</p>
                   </div>
-                  {!user.isAssigned && <ChevronDown size={18} color="#0F322B" style={{ transform: 'rotate(-90deg)', marginLeft: 'auto' }} />}
+                  <ChevronDown size={18} color="#0F322B" style={{ transform: 'rotate(-90deg)', marginLeft: 'auto' }} />
                 </div>
               ))
-            ) : (
-              <div className="empty-state-modal-v2">
-                <p>Aucun profil trouvé sur la plateforme.</p>
+            )}
+
+            {/* Aucun résultat */}
+            {!loading && searched && results.length === 0 && (
+              <div className="empty-state-modal-v2" style={{ padding: '28px 20px', textAlign: 'center' }}>
+                <p style={{ color: '#64748B', marginBottom: '12px', fontSize: '14px', fontWeight: 500 }}>
+                  Aucun profil trouvé sur la plateforme {searchTerm ? `pour « ${searchTerm} »` : ''}.
+                </p>
                 <button className="btn-manual-add" onClick={onManualAdd}>
                   Créer un nouveau profil manuellement
                 </button>
               </div>
             )}
           </div>
-          
+
           <div className="modal-selection-footer">
-             <button className="btn-text-manual" onClick={onManualAdd}>
-                Le locataire n'est pas sur la plateforme ? Ajouter manuellement
-             </button>
+            <button className="btn-text-manual" onClick={onManualAdd}>
+              Le locataire n'est pas sur la plateforme ? Ajouter manuellement
+            </button>
           </div>
         </div>
       </div>
@@ -82,3 +131,4 @@ const TenantSelectionModal = ({ isOpen, onClose, onSelect, onManualAdd, title = 
 };
 
 export default TenantSelectionModal;
+

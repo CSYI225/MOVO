@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { X, Home, Building, Hash, CheckCircle } from 'lucide-react';
-import { properties } from '../../data/mockData';
 
-const PropertySelectionModal = ({ isOpen, onClose, onConfirm, tenantName, fixedPropertyId = null }) => {
+const PropertySelectionModal = ({ isOpen, onClose, onConfirm, tenantName, fixedPropertyId = null, properties = [] }) => {
   const [selectedPropertyId, setSelectedPropertyId] = useState(fixedPropertyId || null);
   const [selectedUnitId, setSelectedUnitId] = useState(null);
   const [occupancyDate, setOccupancyDate] = useState(new Date().toISOString().split('T')[0]);
@@ -17,7 +16,7 @@ const PropertySelectionModal = ({ isOpen, onClose, onConfirm, tenantName, fixedP
 
   if (!isOpen) return null;
 
-  const selectedProperty = properties.find(p => p.id === selectedPropertyId);
+  const selectedProperty = (properties || []).find(p => String(p.id) === String(selectedPropertyId));
   const isImmeuble = selectedProperty?.type === 'Immeuble';
   const availableUnits = isImmeuble
     ? (selectedProperty?.units || []).filter(u => !u.tenantId)
@@ -55,27 +54,41 @@ const PropertySelectionModal = ({ isOpen, onClose, onConfirm, tenantName, fixedP
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto', marginBottom: '20px' }}>
             {properties
               .filter(p => fixedPropertyId ? p.id === fixedPropertyId : true)
-              .map(p => (
-              <div
-                key={p.id}
-                onClick={() => { if (!fixedPropertyId) { setSelectedPropertyId(p.id); setSelectedUnitId(null); } }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '12px 16px', border: `2px solid ${selectedPropertyId === p.id ? '#0F322B' : '#E5E7EB'}`,
-                  borderRadius: '12px', cursor: fixedPropertyId ? 'default' : 'pointer', background: selectedPropertyId === p.id ? '#F0FAF1' : 'white',
-                  transition: 'all 0.15s'
-                }}
-              >
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {p.type === 'Immeuble' ? <Building size={18} color="#F49E00" /> : <Home size={18} color="#F49E00" />}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontWeight: 700, fontSize: '14px', color: '#1A1A1A', margin: 0 }}>{p.name}</p>
-                  <p style={{ fontSize: '12px', color: '#999', margin: 0 }}>{p.type} · {p.location}</p>
-                </div>
-                {selectedPropertyId === p.id && <CheckCircle size={18} color="#0F322B" />}
-              </div>
-            ))}
+              .map(p => {
+                const isOccupied = p.type !== 'Immeuble' && (p.status === 'Occupé' || (p.currentTenants && p.currentTenants.length > 0) || (p.occupants && p.occupants > 0));
+                return (
+                  <div
+                    key={p.id}
+                    onClick={() => {
+                      if (isOccupied) return;
+                      if (!fixedPropertyId) {
+                        setSelectedPropertyId(p.id);
+                        setSelectedUnitId(null);
+                      }
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      padding: '12px 16px',
+                      border: `2px solid ${selectedPropertyId === p.id ? '#0F322B' : '#E5E7EB'}`,
+                      borderRadius: '12px',
+                      cursor: isOccupied ? 'not-allowed' : (fixedPropertyId ? 'default' : 'pointer'),
+                      background: selectedPropertyId === p.id ? '#F0FAF1' : (isOccupied ? '#F9FAFB' : 'white'),
+                      opacity: isOccupied ? 0.6 : 1,
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {p.type === 'Immeuble' ? <Building size={18} color="#F49E00" /> : <Home size={18} color="#F49E00" />}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: 700, fontSize: '14px', color: isOccupied ? '#94A3B8' : '#1A1A1A', margin: 0 }}>{p.name}</p>
+                      <p style={{ fontSize: '12px', color: '#999', margin: 0 }}>{p.type} · {p.location} {isOccupied ? '· (Occupé)' : ''}</p>
+                    </div>
+                    {isOccupied && <span style={{ fontSize: '11px', fontWeight: 600, color: '#EF4444', background: '#FEF2F2', padding: '2px 8px', borderRadius: '12px' }}>Occupé</span>}
+                    {!isOccupied && selectedPropertyId === p.id && <CheckCircle size={18} color="#0F322B" />}
+                  </div>
+                );
+              })}
           </div>
 
           {/* Unit selection for Immeuble */}

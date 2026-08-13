@@ -1,13 +1,14 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, SlidersHorizontal, Plus, MapPin, Building, Home, X, Users } from 'lucide-react';
-import { properties } from '../../data/mockData';
+import { useAuth } from '../../context/AuthContext';
 import './Biens.css';
 
 import PropertyModal from '../../components/Modals/PropertyModal';
 
 const Biens = () => {
   const navigate = useNavigate();
+  const { properties } = useAuth();
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filterType, setFilterType] = React.useState('Tous les types');
@@ -20,7 +21,7 @@ const Biens = () => {
       const matchesType = filterType === 'Tous les types' || p.type === filterType;
       return matchesSearch && matchesType;
     });
-  }, [searchTerm, filterType, refresh]);
+  }, [properties, searchTerm, filterType, refresh]);
 
   return (
     <div className="biens-page">
@@ -68,15 +69,27 @@ const Biens = () => {
           filteredProperties.map((property) => (
             <div key={property.id} className="property-card-large">
               <div className="property-image-placeholder">
-                <img 
-                  src={`https://picsum.photos/seed/${property.id}/400/200`} 
-                  alt={property.name} 
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.nextElementSibling.style.display = 'flex';
-                  }}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
+                {(property.photo || property.image) ? (
+                  <img
+                    src={property.photo || property.image}
+                    alt={property.name}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.parentElement.querySelector('.fallback-icon').style.display = 'flex';
+                    }}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <img
+                    src={`https://picsum.photos/seed/${property.id}/400/200`}
+                    alt={property.name}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.parentElement.querySelector('.fallback-icon').style.display = 'flex';
+                    }}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                )}
                 <div className="fallback-icon" style={{ display: 'none', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
                   {property.type === 'Immeuble' ? <Building size={48} color="#9CA3AF" /> : <Home size={48} color="#9CA3AF" />}
                 </div>

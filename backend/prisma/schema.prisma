@@ -1,0 +1,580 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Utilisateur {
+  id                       String                  @id @default(uuid()) @db.Uuid
+  email                    String?                 @unique @db.VarChar(255)
+  motDePasseHash           String?                 @map("mot_de_passe_hash")
+  telephone                String?                 @unique @db.VarChar(30)
+  creeParUtilisateurId     String?                 @map("cree_par_utilisateur_id") @db.Uuid
+  estReclame               Boolean                 @default(true) @map("est_reclame")
+  emailVerifie             Boolean                 @default(false) @map("email_verifie")
+  estActif                 Boolean                 @default(true) @map("est_actif")
+  derniereConnexionLe      DateTime?               @map("derniere_connexion_le") @db.Timestamp(6)
+  supprimeLe               DateTime?               @map("supprime_le") @db.Timestamp(6)
+  creeLe                   DateTime                @default(now()) @map("cree_le") @db.Timestamp(6)
+  misAJourLe               DateTime                @updatedAt @map("mis_a_jour_le") @db.Timestamp(6)
+  abonnements              Abonnement[]
+  avisRediges              Avis[]                  @relation("AvisAuteur")
+  avisModeres              Avis[]                  @relation("AvisModerateur")
+  avisRecus                Avis[]                  @relation("AvisSujet")
+  bauxBailleur             Bail[]                  @relation("BailBailleur")
+  bauxLocataire            Bail[]                  @relation("BailLocataire")
+  biensImmobiliers         BienImmobilier[]
+  contestationsInit        Contestation[]          @relation("ContestationPlaignant")
+  contestationsRes         Contestation[]          @relation("ContestationResoluteur")
+  deblocagesRecus          DeblocageProfil[]       @relation("UtilisateurDebloque")
+  deblocagesEffectues      DeblocageProfil[]       @relation("UtilisateurDebloqueur")
+  demandesLiaisonBailleur  DemandeLiaison[]        @relation("LiaisonBailleur")
+  demandesLiaisonLocataire DemandeLiaison[]        @relation("LiaisonLocataire")
+  documents                Document[]              @relation("DocumentProprietaire")
+  documentsVerifies        Document[]              @relation("DocumentVerificateur")
+  dossierLocataire         DossierLocataire?
+  evenementsSysteme        EvenementSysteme[]
+  historiqueAvis           HistoriqueAvis[]
+  historiquesCredibilite   HistoriqueCredibilite[]
+  membresAgence            MembreAgence[]
+  notifications            Notification[]
+  paiements                Paiement[]
+  profil                   Profil?
+  profilProBailleur        ProfilProBailleur?
+  refreshTokens            RefreshToken[]
+  reponsesAvis             ReponseAvis[]
+  signalementsTraites      Signalement[]           @relation("SignalementExamineur")
+  signalementsEmis         Signalement[]           @relation("UtilisateurSignaleur")
+  signalementsRecus        Signalement[]           @relation("UtilisateurSignale")
+  creeParUtilisateur       Utilisateur?            @relation("UtilisateurCreateur", fields: [creeParUtilisateurId], references: [id])
+  utilisateursCrees        Utilisateur[]           @relation("UtilisateurCreateur")
+  roles                    UtilisateurRole[]
+  verificationTokens       VerificationToken[]
+
+  @@map("utilisateurs")
+}
+
+model RefreshToken {
+  id            String      @id @default(uuid()) @db.Uuid
+  utilisateurId String      @map("utilisateur_id") @db.Uuid
+  tokenHash     String      @unique @map("token_hash")
+  infoAppareil  String?     @map("info_appareil")
+  adresseIp     String?     @map("adresse_ip") @db.Inet
+  expireLe      DateTime    @map("expire_le") @db.Timestamp(6)
+  revoqueLe     DateTime?   @map("revoque_le") @db.Timestamp(6)
+  creeLe        DateTime    @default(now()) @map("cree_le") @db.Timestamp(6)
+  utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id])
+
+  @@map("refresh_tokens")
+}
+
+model VerificationToken {
+  id            String      @id @default(uuid()) @db.Uuid
+  utilisateurId String      @map("utilisateur_id") @db.Uuid
+  token         String      @db.VarChar(255)
+  type          String      @db.VarChar(50)
+  expireLe      DateTime    @map("expire_le") @db.Timestamp(6)
+  utiliseLe     DateTime?   @map("utilise_le") @db.Timestamp(6)
+  creeLe        DateTime    @default(now()) @map("cree_le") @db.Timestamp(6)
+  utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id])
+
+  @@map("verification_tokens")
+}
+
+model Role {
+  id                Int               @id @default(autoincrement()) @db.SmallInt
+  code              String            @unique @db.VarChar(50)
+  libelle           String            @db.VarChar(100)
+  description       String?
+  rolesPermissions  RolePermission[]
+  utilisateursRoles UtilisateurRole[]
+
+  @@map("roles")
+}
+
+model UtilisateurRole {
+  utilisateurId String      @map("utilisateur_id") @db.Uuid
+  roleId        Int         @map("role_id") @db.SmallInt
+  attribuePar   String?     @map("attribue_par") @db.Uuid
+  attribueLe    DateTime    @default(now()) @map("attribue_le") @db.Timestamp(6)
+  expireLe      DateTime?   @map("expire_le") @db.Timestamp(6)
+  role          Role        @relation(fields: [roleId], references: [id])
+  utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id])
+
+  @@id([utilisateurId, roleId])
+  @@map("utilisateurs_roles")
+}
+
+model Permission {
+  id               Int              @id @default(autoincrement()) @db.SmallInt
+  code             String           @unique @db.VarChar(100)
+  description      String?
+  rolesPermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       Int        @map("role_id") @db.SmallInt
+  permissionId Int        @map("permission_id") @db.SmallInt
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  role         Role       @relation(fields: [roleId], references: [id])
+
+  @@id([roleId, permissionId])
+  @@map("roles_permissions")
+}
+
+model Ville {
+  id               Int              @id @default(autoincrement()) @db.SmallInt
+  nom              String           @db.VarChar(100)
+  quartier         String?          @db.VarChar(100)
+  codePays         String           @map("code_pays") @db.VarChar(10)
+  estActif         Boolean          @default(true) @map("est_actif")
+  biensImmobiliers BienImmobilier[]
+  profils          Profil[]
+
+  @@map("villes")
+}
+
+model Profil {
+  id            String      @id @default(uuid()) @db.Uuid
+  utilisateurId String      @unique @map("utilisateur_id") @db.Uuid
+  prenom        String      @db.VarChar(100)
+  nom           String      @db.VarChar(100)
+  urlAvatar     String?     @map("url_avatar")
+  villeId       Int?        @map("ville_id") @db.SmallInt
+  supprimeLe    DateTime?   @map("supprime_le") @db.Timestamp(6)
+  creeLe        DateTime    @default(now()) @map("cree_le") @db.Timestamp(6)
+  misAJourLe    DateTime    @updatedAt @map("mis_a_jour_le") @db.Timestamp(6)
+  utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id])
+  ville         Ville?      @relation(fields: [villeId], references: [id])
+
+  @@map("profils")
+}
+
+model ProfilProBailleur {
+  id                String      @id @default(uuid()) @db.Uuid
+  utilisateurId     String      @unique @map("utilisateur_id") @db.Uuid
+  telephonePro      String?     @map("telephone_pro") @db.VarChar(30)
+  nomEntreprise     String?     @map("nom_entreprise") @db.VarChar(200)
+  estVerifieAdmin   Boolean     @default(false) @map("est_verifie_admin")
+  verifieAdminLe    DateTime?   @map("verifie_admin_le") @db.Timestamp(6)
+  verifieParAdminId String?     @map("verifie_par_admin_id") @db.Uuid
+  utilisateur       Utilisateur @relation(fields: [utilisateurId], references: [id])
+
+  @@map("profils_pro_bailleurs")
+}
+
+model Agence {
+  id               String           @id @default(uuid()) @db.Uuid
+  nom              String           @db.VarChar(200)
+  email            String           @unique @db.VarChar(255)
+  telephone        String           @db.VarChar(30)
+  creeLe           DateTime         @default(now()) @map("cree_le") @db.Timestamp(6)
+  misAJourLe       DateTime         @updatedAt @map("mis_a_jour_le") @db.Timestamp(6)
+  biensImmobiliers BienImmobilier[]
+  membres          MembreAgence[]
+
+  @@map("agences")
+}
+
+model MembreAgence {
+  agenceId       String      @map("agence_id") @db.Uuid
+  utilisateurId  String      @map("utilisateur_id") @db.Uuid
+  roleDansAgence String      @map("role_dans_agence") @db.VarChar(50)
+  rejointLe      DateTime    @default(now()) @map("rejoint_le") @db.Timestamp(6)
+  agence         Agence      @relation(fields: [agenceId], references: [id])
+  utilisateur    Utilisateur @relation(fields: [utilisateurId], references: [id])
+
+  @@id([agenceId, utilisateurId])
+  @@map("membres_agence")
+}
+
+model DossierLocataire {
+  id            String      @id @default(uuid()) @db.Uuid
+  utilisateurId String      @unique @map("utilisateur_id") @db.Uuid
+  numeroPiece   String?     @unique @map("numero_piece") @db.VarChar(50)
+  typePiece     String?     @map("type_piece") @db.VarChar(30)
+  pieceVerifiee Boolean     @default(false) @map("piece_verifiee")
+  utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id])
+
+  @@map("dossiers_locataires")
+}
+
+model BienImmobilier {
+  id                    String          @id @default(uuid()) @db.Uuid
+  bailleurUtilisateurId String?         @map("bailleur_utilisateur_id") @db.Uuid
+  agenceId              String?         @map("agence_id") @db.Uuid
+  nom                   String          @db.VarChar(200)
+  type                  String          @db.VarChar(50)
+  adresse               String
+  villeId               Int             @map("ville_id") @db.SmallInt
+  photo                 String?         @map("photo")
+  nombrePieces          Int?            @map("nombre_pieces") @db.SmallInt
+  supprimeLe            DateTime?       @map("supprime_le") @db.Timestamp(6)
+  creeLe                DateTime        @default(now()) @map("cree_le") @db.Timestamp(6)
+  misAJourLe            DateTime        @updatedAt @map("mis_a_jour_le") @db.Timestamp(6)
+  agence                Agence?         @relation(fields: [agenceId], references: [id])
+  bailleur              Utilisateur?    @relation(fields: [bailleurUtilisateurId], references: [id])
+  ville                 Ville           @relation(fields: [villeId], references: [id])
+  espacesLocatifs       EspaceLocatif[]
+
+  @@map("biens_immobiliers")
+}
+
+model EspaceLocatif {
+  id               String         @id @default(uuid()) @db.Uuid
+  bienImmobilierId String         @map("bien_immobilier_id") @db.Uuid
+  libelle          String         @db.VarChar(100)
+  type             String         @db.VarChar(50)
+  prixParMois      Decimal        @map("prix_par_mois") @db.Decimal(12, 2)
+  codeDevise       String         @map("code_devise") @db.VarChar(10)
+  supprimeLe       DateTime?      @map("supprime_le") @db.Timestamp(6)
+  creeLe           DateTime       @default(now()) @map("cree_le") @db.Timestamp(6)
+  baux             Bail[]
+  bienImmobilier   BienImmobilier @relation(fields: [bienImmobilierId], references: [id])
+  devise           Devise         @relation(fields: [codeDevise], references: [code])
+
+  @@map("espaces_locatifs")
+}
+
+model Bail {
+  id                     String           @id @default(uuid()) @db.Uuid
+  espaceLocatifId        String           @map("espace_locatif_id") @db.Uuid
+  locataireUtilisateurId String           @map("locataire_utilisateur_id") @db.Uuid
+  bailleurUtilisateurId  String           @map("bailleur_utilisateur_id") @db.Uuid
+  commenceLe             DateTime         @map("commence_le") @db.Date
+  termineLe              DateTime?        @map("termine_le") @db.Date
+  loyerMensuel           Decimal          @map("loyer_mensuel") @db.Decimal(12, 2)
+  codeDevise             String           @map("code_devise") @db.VarChar(10)
+  statutVerification     String           @default("non_verifie") @map("statut_verification") @db.VarChar(30)
+  verifieParLocataireLe  DateTime?        @map("verifie_par_locataire_le") @db.Timestamp(6)
+  supprimeLe             DateTime?        @map("supprime_le") @db.Timestamp(6)
+  creeLe                 DateTime         @default(now()) @map("cree_le") @db.Timestamp(6)
+  avis                   Avis[]
+  bailleur               Utilisateur      @relation("BailBailleur", fields: [bailleurUtilisateurId], references: [id])
+  devise                 Devise           @relation(fields: [codeDevise], references: [code])
+  espaceLocatif          EspaceLocatif    @relation(fields: [espaceLocatifId], references: [id])
+  locataire              Utilisateur      @relation("BailLocataire", fields: [locataireUtilisateurId], references: [id])
+  demandesLiaison        DemandeLiaison[]
+  documents              Document[]
+
+  @@map("baux")
+}
+
+model DemandeLiaison {
+  id                     String      @id @default(uuid()) @db.Uuid
+  bailleurUtilisateurId  String      @map("bailleur_utilisateur_id") @db.Uuid
+  locataireUtilisateurId String      @map("locataire_utilisateur_id") @db.Uuid
+  bailId                 String      @map("bail_id") @db.Uuid
+  message                String?
+  statut                 String      @default("en_attente") @db.VarChar(30)
+  reponduLe              DateTime?   @map("repondu_le") @db.Timestamp(6)
+  expireLe               DateTime    @map("expire_le") @db.Timestamp(6)
+  creeLe                 DateTime    @default(now()) @map("cree_le") @db.Timestamp(6)
+  bail                   Bail        @relation(fields: [bailId], references: [id])
+  bailleur               Utilisateur @relation("LiaisonBailleur", fields: [bailleurUtilisateurId], references: [id])
+  locataire              Utilisateur @relation("LiaisonLocataire", fields: [locataireUtilisateurId], references: [id])
+
+  @@map("demandes_liaison")
+}
+
+model Avis {
+  id                       String            @id @default(uuid()) @db.Uuid
+  auteurUtilisateurId      String            @map("auteur_utilisateur_id") @db.Uuid
+  sujetUtilisateurId       String            @map("sujet_utilisateur_id") @db.Uuid
+  bailId                   String?           @map("bail_id") @db.Uuid
+  note                     Decimal           @db.Decimal(2, 1)
+  commentaire              String
+  regularitePaiement       String            @map("regularite_paiement") @db.VarChar(30)
+  typeAvis                 String            @map("type_avis") @db.VarChar(30)
+  statutModeration         String            @default("publie") @map("statut_moderation") @db.VarChar(30)
+  moderePar                String?           @map("modere_par") @db.Uuid
+  modereLe                 DateTime?         @map("modere_le") @db.Timestamp(6)
+  raisonModeration         String?           @map("raison_moderation")
+  credibiliteAuteurAEpoque Decimal           @map("credibilite_auteur_a_epoque") @db.Decimal(5, 2)
+  poids                    Decimal           @default(1.0) @db.Decimal(4, 3)
+  estSignaleAuto           Boolean           @default(false) @map("est_signale_auto")
+  supprimeLe               DateTime?         @map("supprime_le") @db.Timestamp(6)
+  publieLe                 DateTime          @default(now()) @map("publie_le") @db.Timestamp(6)
+  misAJourLe               DateTime          @updatedAt @map("mis_a_jour_le") @db.Timestamp(6)
+  auteur                   Utilisateur       @relation("AvisAuteur", fields: [auteurUtilisateurId], references: [id])
+  bail                     Bail?             @relation(fields: [bailId], references: [id])
+  moderateur               Utilisateur?      @relation("AvisModerateur", fields: [moderePar], references: [id])
+  sujet                    Utilisateur       @relation("AvisSujet", fields: [sujetUtilisateurId], references: [id])
+  contestations            Contestation[]
+  historique               HistoriqueAvis[]
+  piecesJointes            PieceJointeAvis[]
+  reponse                  ReponseAvis?
+  signalements             Signalement[]
+
+  @@unique([auteurUtilisateurId, bailId])
+  @@map("avis")
+}
+
+model HistoriqueAvis {
+  id                           String      @id @default(uuid()) @db.Uuid
+  avisId                       String      @map("avis_id") @db.Uuid
+  notePrecedente               Decimal     @map("note_precedente") @db.Decimal(2, 1)
+  commentairePrecedent         String      @map("commentaire_precedent")
+  regularitePaiementPrecedente String      @map("regularite_paiement_precedente") @db.VarChar(30)
+  modifiePar                   String      @map("modifie_par") @db.Uuid
+  raisonModification           String?     @map("raison_modification")
+  modifieLe                    DateTime    @default(now()) @map("modifie_le") @db.Timestamp(6)
+  avis                         Avis        @relation(fields: [avisId], references: [id])
+  modificateur                 Utilisateur @relation(fields: [modifiePar], references: [id])
+
+  @@map("historique_avis")
+}
+
+model ReponseAvis {
+  id                  String      @id @default(uuid()) @db.Uuid
+  avisId              String      @unique @map("avis_id") @db.Uuid
+  auteurUtilisateurId String      @map("auteur_utilisateur_id") @db.Uuid
+  contenu             String
+  supprimeLe          DateTime?   @map("supprime_le") @db.Timestamp(6)
+  publieLe            DateTime    @default(now()) @map("publie_le") @db.Timestamp(6)
+  auteur              Utilisateur @relation(fields: [auteurUtilisateurId], references: [id])
+  avis                Avis        @relation(fields: [avisId], references: [id])
+
+  @@map("reponses_avis")
+}
+
+model PieceJointeAvis {
+  id          String    @id @default(uuid()) @db.Uuid
+  avisId      String    @map("avis_id") @db.Uuid
+  urlFichier  String    @map("url_fichier")
+  nomFichier  String    @map("nom_fichier") @db.VarChar(255)
+  typeFichier String    @map("type_fichier") @db.VarChar(50)
+  supprimeLe  DateTime? @map("supprime_le") @db.Timestamp(6)
+  uploadeLe   DateTime  @default(now()) @map("uploade_le") @db.Timestamp(6)
+  avis        Avis      @relation(fields: [avisId], references: [id])
+
+  @@map("pieces_jointes_avis")
+}
+
+model Contestation {
+  id                     String                    @id @default(uuid()) @db.Uuid
+  avisId                 String                    @map("avis_id") @db.Uuid
+  plaignantUtilisateurId String                    @map("plaignant_utilisateur_id") @db.Uuid
+  raison                 String
+  statut                 String                    @default("en_attente") @db.VarChar(30)
+  resoluPar              String?                   @map("resolu_par") @db.Uuid
+  resoluLe               DateTime?                 @map("resolu_le") @db.Timestamp(6)
+  noteResolution         String?                   @map("note_resolution")
+  soumisLe               DateTime                  @default(now()) @map("soumis_le") @db.Timestamp(6)
+  avis                   Avis                      @relation(fields: [avisId], references: [id])
+  plaignant              Utilisateur               @relation("ContestationPlaignant", fields: [plaignantUtilisateurId], references: [id])
+  resoluteur             Utilisateur?              @relation("ContestationResoluteur", fields: [resoluPar], references: [id])
+  piecesJointes          PieceJointeContestation[]
+
+  @@map("contestations")
+}
+
+model PieceJointeContestation {
+  id             String       @id @default(uuid()) @db.Uuid
+  contestationId String       @map("contestation_id") @db.Uuid
+  urlFichier     String       @map("url_fichier")
+  nomFichier     String       @map("nom_fichier") @db.VarChar(255)
+  uploadeLe      DateTime     @default(now()) @map("uploade_le") @db.Timestamp(6)
+  contestation   Contestation @relation(fields: [contestationId], references: [id])
+
+  @@map("pieces_jointes_contestations")
+}
+
+model Document {
+  id                        String       @id @default(uuid()) @db.Uuid
+  proprietaireUtilisateurId String       @map("proprietaire_utilisateur_id") @db.Uuid
+  bailId                    String?      @map("bail_id") @db.Uuid
+  type                      String       @db.VarChar(50)
+  urlFichier                String       @map("url_fichier")
+  nomFichier                String       @map("nom_fichier") @db.VarChar(255)
+  statutVerification        String       @default("en_attente") @map("statut_verification") @db.VarChar(30)
+  verifiePar                String?      @map("verifie_par") @db.Uuid
+  verifieLe                 DateTime?    @map("verifie_le") @db.Timestamp(6)
+  supprimeLe                DateTime?    @map("supprime_le") @db.Timestamp(6)
+  uploadeLe                 DateTime     @default(now()) @map("uploade_le") @db.Timestamp(6)
+  bail                      Bail?        @relation(fields: [bailId], references: [id])
+  proprietaire              Utilisateur  @relation("DocumentProprietaire", fields: [proprietaireUtilisateurId], references: [id])
+  verificateur              Utilisateur? @relation("DocumentVerificateur", fields: [verifiePar], references: [id])
+
+  @@map("documents")
+}
+
+model Signalement {
+  id                      String       @id @default(uuid()) @db.Uuid
+  utilisateurSignaleId    String       @map("utilisateur_signale_id") @db.Uuid
+  signaleParUtilisateurId String?      @map("signale_par_utilisateur_id") @db.Uuid
+  avisId                  String?      @map("avis_id") @db.Uuid
+  typeSignalement         String       @map("type_signalement") @db.VarChar(50)
+  description             String
+  estDetecteAuto          Boolean      @default(false) @map("est_detecte_auto")
+  regleDetectionAuto      String?      @map("regle_detection_auto") @db.VarChar(100)
+  statut                  String       @default("en_attente") @db.VarChar(30)
+  examinePar              String?      @map("examine_par") @db.Uuid
+  examineLe               DateTime?    @map("examine_le") @db.Timestamp(6)
+  actionPrise             String?      @map("action_prise")
+  creeLe                  DateTime     @default(now()) @map("cree_le") @db.Timestamp(6)
+  avis                    Avis?        @relation(fields: [avisId], references: [id])
+  examineur               Utilisateur? @relation("SignalementExamineur", fields: [examinePar], references: [id])
+  signaleur               Utilisateur? @relation("UtilisateurSignaleur", fields: [signaleParUtilisateurId], references: [id])
+  utilisateurSignale      Utilisateur  @relation("UtilisateurSignale", fields: [utilisateurSignaleId], references: [id])
+
+  @@map("signalements_abus")
+}
+
+model HistoriqueCredibilite {
+  id                   String      @id @default(uuid()) @db.Uuid
+  utilisateurId        String      @map("utilisateur_id") @db.Uuid
+  score                Decimal     @db.Decimal(5, 2)
+  typeScore            String      @map("type_score") @db.VarChar(20)
+  evenementDeclencheur String      @map("evenement_declencheur") @db.VarChar(100)
+  idRefDeclencheur     String?     @map("id_ref_declencheur") @db.Uuid
+  facteurs             Json
+  calculeLe            DateTime    @default(now()) @map("calcule_le") @db.Timestamp(6)
+  utilisateur          Utilisateur @relation(fields: [utilisateurId], references: [id])
+
+  @@map("historique_credibilite")
+}
+
+model Devise {
+  code            String          @id @db.VarChar(10)
+  libelle         String          @db.VarChar(50)
+  symbole         String          @db.VarChar(10)
+  estActif        Boolean         @map("est_actif")
+  baux            Bail[]
+  espacesLocatifs EspaceLocatif[]
+  forfaits        Forfait[]
+  paiements       Paiement[]
+
+  @@map("devises")
+}
+
+model FournisseurPaiement {
+  id        Int        @id @default(autoincrement()) @db.SmallInt
+  code      String     @unique @db.VarChar(50)
+  libelle   String     @db.VarChar(100)
+  codesPays String[]   @map("codes_pays")
+  estActif  Boolean    @map("est_actif")
+  paiements Paiement[]
+
+  @@map("fournisseurs_paiement")
+}
+
+model Fonctionnalite {
+  id                     Int                     @id @default(autoincrement()) @db.SmallInt
+  code                   String                  @unique @db.VarChar(100)
+  description            String?
+  fonctionnalitesForfait FonctionnaliteForfait[]
+
+  @@map("fonctionnalites")
+}
+
+model Forfait {
+  id                     Int                     @id @default(autoincrement()) @db.SmallInt
+  code                   String                  @unique @db.VarChar(50)
+  prixMensuel            Decimal                 @map("prix_mensuel") @db.Decimal(12, 2)
+  prixAnnuel             Decimal                 @map("prix_annuel") @db.Decimal(12, 2)
+  codeDevise             String                  @map("code_devise") @db.VarChar(10)
+  abonnements            Abonnement[]
+  fonctionnalitesForfait FonctionnaliteForfait[]
+  devise                 Devise                  @relation(fields: [codeDevise], references: [code])
+
+  @@map("forfaits")
+}
+
+model FonctionnaliteForfait {
+  forfaitId        Int            @map("forfait_id") @db.SmallInt
+  fonctionnaliteId Int            @map("fonctionnalite_id") @db.SmallInt
+  valeurLimite     Int?           @map("valeur_limite")
+  fonctionnalite   Fonctionnalite @relation(fields: [fonctionnaliteId], references: [id])
+  forfait          Forfait        @relation(fields: [forfaitId], references: [id])
+
+  @@id([forfaitId, fonctionnaliteId])
+  @@map("fonctionnalites_forfait")
+}
+
+model Abonnement {
+  id                 String      @id @default(uuid()) @db.Uuid
+  utilisateurId      String      @map("utilisateur_id") @db.Uuid
+  forfaitId          Int         @map("forfait_id") @db.SmallInt
+  cycleFacturation   String      @map("cycle_facturation") @db.VarChar(20)
+  statut             String      @db.VarChar(30)
+  commenceLe         DateTime    @map("commence_le") @db.Date
+  termineLe          DateTime    @map("termine_le") @db.Date
+  annuleLe           DateTime?   @map("annule_le") @db.Timestamp(6)
+  renouvellementAuto Boolean     @default(true) @map("renouvellement_auto")
+  forfait            Forfait     @relation(fields: [forfaitId], references: [id])
+  utilisateur        Utilisateur @relation(fields: [utilisateurId], references: [id])
+  paiements          Paiement[]
+
+  @@map("abonnements")
+}
+
+model Paiement {
+  id                         String              @id @default(uuid()) @db.Uuid
+  utilisateurId              String              @map("utilisateur_id") @db.Uuid
+  abonnementId               String?             @map("abonnement_id") @db.Uuid
+  utilisateurSujetDebloqueId String?             @map("utilisateur_sujet_debloque_id") @db.Uuid
+  montant                    Decimal             @db.Decimal(12, 2)
+  codeDevise                 String              @map("code_devise") @db.VarChar(10)
+  fournisseurId              Int                 @map("fournisseur_id") @db.SmallInt
+  statut                     String              @db.VarChar(30)
+  refTransaction             String              @unique @map("ref_transaction") @db.VarChar(200)
+  reponseBruteFournisseur    Json?               @map("reponse_brute_fournisseur")
+  payeLe                     DateTime?           @map("paye_le") @db.Timestamp(6)
+  creeLe                     DateTime            @default(now()) @map("cree_le") @db.Timestamp(6)
+  deblocages                 DeblocageProfil[]
+  abonnement                 Abonnement?         @relation(fields: [abonnementId], references: [id])
+  devise                     Devise              @relation(fields: [codeDevise], references: [code])
+  fournisseur                FournisseurPaiement @relation(fields: [fournisseurId], references: [id])
+  utilisateur                Utilisateur         @relation(fields: [utilisateurId], references: [id])
+
+  @@map("paiements")
+}
+
+model DeblocageProfil {
+  id                    String      @id @default(uuid()) @db.Uuid
+  utilisateurId         String      @map("utilisateur_id") @db.Uuid
+  utilisateurDebloqueId String      @map("utilisateur_debloque_id") @db.Uuid
+  paiementId            String?     @map("paiement_id") @db.Uuid
+  expireLe              DateTime?   @map("expire_le") @db.Timestamp(6)
+  creeLe                DateTime    @default(now()) @map("cree_le") @db.Timestamp(6)
+  paiement              Paiement?   @relation(fields: [paiementId], references: [id])
+  debloque              Utilisateur @relation("UtilisateurDebloque", fields: [utilisateurDebloqueId], references: [id])
+  debloqueur            Utilisateur @relation("UtilisateurDebloqueur", fields: [utilisateurId], references: [id])
+
+  @@map("deblocages_profil")
+}
+
+model Notification {
+  id                        String      @id @default(uuid()) @db.Uuid
+  destinataireUtilisateurId String      @map("destinataire_utilisateur_id") @db.Uuid
+  type                      String      @db.VarChar(100)
+  titre                     String      @db.VarChar(200)
+  corps                     String
+  donnees                   Json?
+  estLu                     Boolean     @default(false) @map("est_lu")
+  luLe                      DateTime?   @map("lu_le") @db.Timestamp(6)
+  creeLe                    DateTime    @default(now()) @map("cree_le") @db.Timestamp(6)
+  destinataire              Utilisateur @relation(fields: [destinataireUtilisateurId], references: [id])
+
+  @@map("notifications")
+}
+
+model EvenementSysteme {
+  id                  String       @id @default(uuid()) @db.Uuid
+  typeEvenement       String       @map("type_evenement") @db.VarChar(100)
+  acteurUtilisateurId String?      @map("acteur_utilisateur_id") @db.Uuid
+  typeSujet           String       @map("type_sujet") @db.VarChar(50)
+  sujetId             String       @map("sujet_id") @db.Uuid
+  payload             Json
+  adresseIp           String?      @map("adresse_ip") @db.Inet
+  userAgent           String?      @map("user_agent")
+  survenuLe           DateTime     @default(now()) @map("survenu_le") @db.Timestamp(6)
+  acteur              Utilisateur? @relation(fields: [acteurUtilisateurId], references: [id])
+
+  @@map("evenements_systeme")
+}

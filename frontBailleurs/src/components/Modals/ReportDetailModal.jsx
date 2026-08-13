@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Star, CheckCircle, FileText, 
   Image as ImageIcon, Edit, Save, AlertTriangle,
@@ -6,7 +6,15 @@ import {
 } from 'lucide-react';
 import './ReportDetailModal.css';
 
+const formatRating = (num) => {
+  const val = Number(num);
+  if (isNaN(val)) return '5';
+  if (Number.isInteger(val)) return String(val);
+  return val.toFixed(1).replace('.', ',');
+};
+
 const ReportDetailModal = ({ report, isOpen, onClose, onEdit }) => {
+  const fileInputRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedComment, setEditedComment] = useState('');
   const [editedRating, setEditedRating] = useState(0);
@@ -18,10 +26,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, onEdit }) => {
       setEditedComment(report.comment || report.content || '');
       setEditedRating(report.rating || 0);
       setEditedRegularity(report.regularity || '');
-      setEditedAttachments(report.attachments || [
-        { id: 1, name: "Contrat_Bail.pdf", type: "pdf" },
-        { id: 2, name: "Etat_des_lieux.jpg", type: "image" }
-      ]);
+      setEditedAttachments(report.attachments || []);
     }
   }, [report, isOpen]);
 
@@ -57,13 +62,35 @@ const ReportDetailModal = ({ report, isOpen, onClose, onEdit }) => {
   };
 
   const handleAddAttachment = () => {
-    const newId = Date.now();
-    setEditedAttachments([...editedAttachments, { id: newId, name: `Nouveau_fichier_${editedAttachments.length + 1}.jpg`, type: "image" }]);
+    if (fileInputRef.current) fileInputRef.current.click();
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    const newAttachments = files.map(f => ({
+      id: Date.now() + Math.random(),
+      name: f.name,
+      type: f.type.includes('pdf') ? 'pdf' : 'image',
+      file: f,
+      url: URL.createObjectURL(f),
+    }));
+    setEditedAttachments(prev => [...prev, ...newAttachments]);
+    e.target.value = '';
   };
 
   const handlePreview = (file) => {
-    alert(`Ouverture de ${file.name} (Simulation)`);
-    // Logic for real app: window.open(file.url, '_blank')
+    let fileUrl = file?.url || file?.urlFichier || (file?.file instanceof File ? URL.createObjectURL(file.file) : null);
+    if (fileUrl) {
+      if (fileUrl.startsWith('/uploads')) {
+        fileUrl = `http://localhost:5000${fileUrl}`;
+      } else if (fileUrl.includes('/uploads/')) {
+        const fileName = fileUrl.split('/uploads/').pop();
+        fileUrl = `http://localhost:5000/uploads/${fileName}`;
+      }
+      window.open(fileUrl, '_blank');
+    } else {
+      alert(`Pièce jointe : ${file?.name || file?.nom || file?.nomFichier || 'Fichier'}`);
+    }
   };
 
   return (
@@ -114,7 +141,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, onEdit }) => {
                ))}
             </div>
             <div className="rating-text-v2">
-                {(isEditing ? editedRating : report.rating)} sur 5 - {(isEditing ? editedRating : report.rating) >= 4 ? 'Excellent' : (isEditing ? editedRating : report.rating) >= 3 ? 'Assez bien' : 'Moyen'}
+                {formatRating(isEditing ? editedRating : report.rating)} sur 5 - {(isEditing ? editedRating : report.rating) >= 4 ? 'Excellent' : (isEditing ? editedRating : report.rating) >= 3 ? 'Assez bien' : 'Moyen'}
             </div>
 
             <div className="section-label-v2">Relation locataire-bailleur</div>
@@ -159,15 +186,12 @@ const ReportDetailModal = ({ report, isOpen, onClose, onEdit }) => {
 
             <div className="section-label-v2">Pièces Jointes - Preuves</div>
             <div className="proofs-grid-v2">
-               {(isEditing ? editedAttachments : (report.attachments || [
-                 { id: 1, name: "Contrat_Bail.pdf", type: "pdf" },
-                 { id: 2, name: "Etat_des_lieux.jpg", type: "image" }
-               ])).map(file => (
+               {(isEditing ? editedAttachments : (report.attachments || [])).map(file => (
                  <div key={file.id} className="proof-item-v2" onClick={() => handlePreview(file)}>
                     <div className="proof-icon-v2">
                         {file.type === 'pdf' ? <FileText size={24} color="#94a3b8" /> : <ImageIcon size={24} color="#94a3b8" />}
                     </div>
-                    <span>{file.name}</span>
+                    <span>{file.name || file.nom}</span>
                     {isEditing && (
                       <button className="btn-delete-proof" onClick={(e) => handleDeleteAttachment(e, file.id)}>
                         <Trash2 size={14} />
@@ -176,10 +200,20 @@ const ReportDetailModal = ({ report, isOpen, onClose, onEdit }) => {
                  </div>
                ))}
                {isEditing && (
-                 <div className="proof-item-v2 add-proof" onClick={handleAddAttachment}>
-                    <div className="proof-icon-v2"><Plus size={24} color="#0F322B" /></div>
-                    <span>Ajouter</span>
-                 </div>
+                 <>
+                   <div className="proof-item-v2 add-proof" onClick={handleAddAttachment}>
+                      <div className="proof-icon-v2"><Plus size={24} color="#0F322B" /></div>
+                      <span>Ajouter</span>
+                   </div>
+                   <input
+                     ref={fileInputRef}
+                     type="file"
+                     multiple
+                     accept="image/*,.pdf"
+                     style={{ display: 'none' }}
+                     onChange={handleFileChange}
+                   />
+                 </>
                )}
             </div>
           </div>
@@ -200,14 +234,18 @@ const ReportDetailModal = ({ report, isOpen, onClose, onEdit }) => {
 
                <div className="section-label-v2">Preuves fournies par le locataire</div>
                <div className="proofs-grid-v2">
-                  <div className="proof-item-v2" onClick={() => handlePreview({ name: 'preuve_image.jpg' })}>
-                     <div className="proof-icon-v2"><ImageIcon size={24} color="#f43f5e" /></div>
-                     <span>preuve_image.jpg</span>
-                  </div>
-                  <div className="proof-item-v2" onClick={() => handlePreview({ name: 'justificatif.pdf' })}>
-                     <div className="proof-icon-v2"><FileText size={24} color="#f43f5e" /></div>
-                     <span>justificatif.pdf</span>
-                  </div>
+                  {(report.contestationPiecesJointes || []).length > 0 ? (
+                    (report.contestationPiecesJointes || []).map(pj => (
+                      <div key={pj.id} className="proof-item-v2" onClick={() => handlePreview({ name: pj.nomFichier || pj.nom, url: pj.urlFichier || pj.url, type: pj.typeFichier?.includes('pdf') ? 'pdf' : 'image' })}>
+                        <div className="proof-icon-v2">
+                          {(pj.typeFichier || '').includes('pdf') ? <FileText size={24} color="#f43f5e" /> : <ImageIcon size={24} color="#f43f5e" />}
+                        </div>
+                        <span>{pj.nomFichier || pj.nom}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p style={{ fontSize: '13px', color: '#94a3b8', padding: '8px 0' }}>Aucune pièce jointe fournie.</p>
+                  )}
                </div>
             </div>
           )}

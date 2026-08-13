@@ -1,57 +1,87 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, Linking, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, fs } from '../Styles/global';
 import UserAvatar from '../components/UserAvatar';
 import RatingStars from '../components/RatingStars';
 import Header from '../components/Header';
+import { useAuth } from '../context/AuthContext';
 
 export default function DetailsAvis({ route, navigation }) {
   const { review } = route.params || {};
+  const { user, API_URL } = useAuth();
+
+  const getFullFileUrl = (fileUrl) => {
+    if (!fileUrl) return null;
+    let url = fileUrl;
+    if (url.startsWith('/uploads')) {
+      const baseApi = API_URL.replace(/\/api\/?$/, '');
+      url = `${baseApi}${url}`;
+    } else if (url.includes('/uploads/')) {
+      const fileName = url.split('/uploads/').pop();
+      const baseApi = API_URL.replace(/\/api\/?$/, '');
+      url = `${baseApi}/uploads/${fileName}`;
+    }
+    return url;
+  };
+
+  const handleOpenAttachment = (url, nom) => {
+    const targetUrl = getFullFileUrl(url);
+    if (targetUrl) {
+      Linking.openURL(targetUrl).catch(() => Alert.alert('Erreur', `Impossible d'ouvrir ${nom}`));
+    } else {
+      Alert.alert('Fichier', nom || 'Pièce jointe');
+    }
+  };
 
   // Tabs states
   const [infoTab, setInfoTab] = useState('Bien'); // 'Propriétaire' | 'Bien'
   const [mainTab, setMainTab] = useState('Avis'); // 'Avis' | 'Contestation'
 
   // Determine if this review has contestation based on state or params
-  const hasContestation = review?.status === 'contested' || review?.id === '3';
+  const hasContestation = review?.status === 'contested' || review?.dejaConteste === true;
 
   // Badges state evaluation
   const relation = review?.relation || 'Vérifiée';
-  const regularity = review?.regularity || 'Toujours à temps';
+  const regularity = review?.regularity || review?.regularitePaiement || 'Toujours à temps';
+
+  // Propriétaire data
+  const bailleurNom = review?.bailleur
+    ? `${review.bailleur.prenom || ''} ${review.bailleur.nom || ''}`.trim() || review.bailleur.email
+    : review?.location || 'Bailleur MOVO';
+  const bailleurEmail = review?.bailleur?.email || 'bailleur@movo.ci';
+
+  // Locataire data
+  const locataireNom = user?.name || `${user?.prenom || ''} ${user?.nom || ''}`.trim() || user?.email || 'Locataire';
 
   const renderInfoBien = () => (
     <View style={styles.infoBienContent}>
       <View style={styles.infoItem}>
         <Ionicons name="home-outline" size={18} color="#182C2A" />
-        <Text style={styles.infoText}>{review?.type || "Duplex"}</Text>
+        <Text style={styles.infoText}>{review?.type || review?.bien?.type || "Non renseigné"}</Text>
       </View>
       <View style={styles.infoItem}>
         <Ionicons name="location-outline" size={18} color="#182C2A" />
-        <Text style={styles.infoText}>{review?.location || "Abidjan, Cocody"}</Text>
+        <Text style={styles.infoText} numberOfLines={1}>{review?.adresse || review?.bien?.adresse || review?.location || "Abidjan"}</Text>
       </View>
       <View style={styles.infoItem}>
         <Ionicons name="cash-outline" size={18} color="#182C2A" />
-        <Text style={styles.infoText}>{review?.price || "15 000 000 FCFA"}</Text>
+        <Text style={styles.infoText}>{review?.price || review?.bien?.loyer || "Loyer non spécifié"}</Text>
       </View>
     </View>
   );
 
   const renderInfoProprio = () => (
     <View style={styles.infoProprioContent}>
-      <UserAvatar initials="CS" size={40} color="#E8F5E9" textColor="#4CAF50" />
+      <UserAvatar initials={bailleurNom.slice(0, 2).toUpperCase()} size={40} color="#E8F5E9" textColor="#4CAF50" />
       <View style={styles.proprioDetails}>
-        <Text style={styles.proprioName}>Coulibaly Sékou</Text>
+        <Text style={styles.proprioName}>{bailleurNom}</Text>
         <RatingStars rating={5} />
       </View>
       <View style={styles.proprioContact}>
         <View style={styles.contactItem}>
-          <Ionicons name="call-outline" size={12} color="#556A68" />
-          <Text style={styles.contactText}>+225 07 08 09 10 11</Text>
-        </View>
-        <View style={styles.contactItem}>
           <Ionicons name="mail-outline" size={12} color="#556A68" />
-          <Text style={styles.contactText}>s.coulibaly@movo.ci</Text>
+          <Text style={styles.contactText}>{bailleurEmail}</Text>
         </View>
       </View>
     </View>
@@ -59,12 +89,11 @@ export default function DetailsAvis({ route, navigation }) {
 
   const renderAvisContent = () => (
     <View style={[styles.mainCard, styles.mainCardAvis]}>
-      {/* Corrected label to Nom du locataire */}
       <Text style={styles.sectionTitle}>Nom du locataire</Text>
       <View style={styles.whiteBox}>
-        <UserAvatar initials="CS" size={40} color="#C9E84F" textColor="#182C2A" />
+        <UserAvatar initials={locataireNom.slice(0, 2).toUpperCase()} size={40} color="#C9E84F" textColor="#182C2A" />
         <View style={styles.locataireInfo}>
-          <Text style={styles.locataireName}>Coulibaly Sékou</Text>
+          <Text style={styles.locataireName}>{locataireNom}</Text>
           <RatingStars rating={review?.rating || 5} />
         </View>
       </View>
@@ -86,19 +115,16 @@ export default function DetailsAvis({ route, navigation }) {
             );
           })}
         </View>
-        <Text style={styles.noteText}>{review?.rating || 5} sur 5 - {review?.rating >= 4 ? 'Excellent' : 'Correct'}</Text>
+        <Text style={styles.noteText}>{review?.rating || 5} sur 5 - {(review?.rating || 5) >= 4 ? 'Excellent' : 'Correct'}</Text>
       </View>
 
-      {/* Corrected Relation Section showing all three options */}
       <Text style={styles.sectionTitle}>Relation locataire-bailleur</Text>
       <View style={styles.badgesRow}>
-        {/* Badges Option 1: Vérifiée */}
         <View style={[styles.badge, relation === 'Vérifiée' ? styles.badgeActive : styles.badgeInactive]}>
           {relation === 'Vérifiée' && <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />}
           <Text style={relation === 'Vérifiée' ? styles.badgeTextActive : styles.badgeTextInactive}>Vérifiée</Text>
         </View>
-        
-        {/* Badges Option 2: Non vérifiée */}
+
         <View style={[
           styles.badge, 
           relation === 'Non vérifiée' ? { backgroundColor: '#FF9800', borderColor: '#FF9800', flexDirection: 'row', alignItems: 'center' } : styles.badgeInactive
@@ -107,7 +133,6 @@ export default function DetailsAvis({ route, navigation }) {
           <Text style={relation === 'Non vérifiée' ? [styles.badgeTextActive, { color: '#FFFFFF' }] : styles.badgeTextInactive}>Non vérifiée</Text>
         </View>
 
-        {/* Badges Option 3: Refusée */}
         <View style={[
           styles.badge, 
           relation === 'Refusée' ? { backgroundColor: '#F25C69', borderColor: '#F25C69', flexDirection: 'row', alignItems: 'center' } : styles.badgeInactive
@@ -120,40 +145,38 @@ export default function DetailsAvis({ route, navigation }) {
       <Text style={styles.sectionTitle}>Commentaire</Text>
       <View style={styles.whiteBox}>
         <Text style={styles.commentText}>
-          {review?.text || review?.comment || "Aucun commentaire."}
+          {review?.text || review?.comment || review?.commentaire || "Aucun commentaire."}
         </Text>
       </View>
 
-      {/* Corrected Regularity Section showing all three options */}
       <Text style={styles.sectionTitle}>Régularité dans le paiement</Text>
       <View style={styles.badgesRow}>
-        {/* Option 1: Toujours à temps */}
         <View style={[styles.badge, regularity === 'Toujours à temps' ? styles.badgeActive : styles.badgeInactive]}>
           <Text style={regularity === 'Toujours à temps' ? styles.badgeTextActive : styles.badgeTextInactive}>Toujours à temps</Text>
         </View>
 
-        {/* Option 2: Peu de Retard */}
         <View style={[styles.badge, regularity === 'Peu de Retard' ? { backgroundColor: '#FF9800', borderColor: '#FF9800' } : styles.badgeInactive]}>
           <Text style={regularity === 'Peu de Retard' ? [styles.badgeTextActive, { color: '#FFFFFF' }] : styles.badgeTextInactive}>Peu de Retard</Text>
         </View>
 
-        {/* Option 3: Pas régulier */}
         <View style={[styles.badge, regularity === 'Pas régulier' ? { backgroundColor: '#F25C69', borderColor: '#F25C69' } : styles.badgeInactive]}>
           <Text style={regularity === 'Pas régulier' ? [styles.badgeTextActive, { color: '#FFFFFF' }] : styles.badgeTextInactive}>Pas régulier</Text>
         </View>
       </View>
 
       <Text style={styles.sectionTitle}>Pièces Jointes - Preuves</Text>
-      <View style={styles.piecesRow}>
-        <View style={styles.pieceCard}>
-          <Ionicons name="document-text-outline" size={32} color="#84B889" />
-          <Text style={styles.pieceText}>Quittance.pdf</Text>
+      {review?.piecesJointes && review.piecesJointes.length > 0 ? (
+        <View style={styles.piecesRow}>
+          {review.piecesJointes.map(pj => (
+            <TouchableOpacity key={pj.id} style={styles.pieceCard} onPress={() => handleOpenAttachment(pj.url, pj.nom)} activeOpacity={0.7}>
+              <Ionicons name={pj.type === 'pdf' || pj.type === 'document' ? "document-text-outline" : "image-outline"} size={28} color="#84B889" />
+              <Text style={styles.pieceText} numberOfLines={1}>{pj.nom}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
-        <View style={styles.pieceCard}>
-          <Ionicons name="image-outline" size={32} color="#84B889" />
-          <Text style={styles.pieceText}>Recu_paiement.png</Text>
-        </View>
-      </View>
+      ) : (
+        <Text style={{ fontSize: fs(11), color: '#94A3B8', fontStyle: 'italic' }}>Aucune pièce jointe transmise pour cet avis.</Text>
+      )}
     </View>
   );
 
@@ -169,21 +192,23 @@ export default function DetailsAvis({ route, navigation }) {
           <Text style={styles.sectionTitleRed}>Motifs de la contestation</Text>
           <View style={styles.whiteBox}>
             <Text style={styles.commentText}>
-              Le commentaire indique que je n'ai pas payé une partie du loyer, ce qui est faux car j'ai tous les reçus de virement bancaire.
+              {review?.raisonContestation || review?.contestationRaison || "Avis contesté par le locataire avec pièces justificatives."}
             </Text>
           </View>
 
-          <Text style={styles.sectionTitleRed}>Pièces Jointes - Preuves</Text>
-          <View style={styles.piecesRow}>
-            <View style={styles.pieceCard}>
-              <Ionicons name="document-text-outline" size={32} color="#F25C69" />
-              <Text style={styles.pieceText}>Relevé.pdf</Text>
+          <Text style={styles.sectionTitleRed}>Pièces Jointes - Preuves de contestation</Text>
+          {review?.piecesJointesContestation && review.piecesJointesContestation.length > 0 ? (
+            <View style={styles.piecesRow}>
+              {review.piecesJointesContestation.map(pj => (
+                <TouchableOpacity key={pj.id} style={styles.pieceCard} onPress={() => handleOpenAttachment(pj.url, pj.nom)} activeOpacity={0.7}>
+                  <Ionicons name="document-text-outline" size={28} color="#F25C69" />
+                  <Text style={styles.pieceText} numberOfLines={1}>{pj.nom}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            <View style={styles.pieceCard}>
-              <Ionicons name="image-outline" size={32} color="#F25C69" />
-              <Text style={styles.pieceText}>Virement.png</Text>
-            </View>
-          </View>
+          ) : (
+            <Text style={{ fontSize: fs(11), color: '#94A3B8', fontStyle: 'italic' }}>Contestation soumise et enregistrée.</Text>
+          )}
         </>
       )}
     </View>
@@ -257,8 +282,8 @@ export default function DetailsAvis({ route, navigation }) {
         {/* Detail Content Card */}
         {mainTab === 'Avis' ? renderAvisContent() : renderContestationContent()}
 
-        {/* Valider / Contester Actions at the bottom */}
-        {review?.status === null ? (
+        {/* Valider / Contester / Modifier Actions at the bottom */}
+        {!hasContestation ? (
           <View style={styles.actionContainer}>
             <TouchableOpacity 
               style={styles.actionValidate}
@@ -277,8 +302,9 @@ export default function DetailsAvis({ route, navigation }) {
               onPress={() => {
                 navigation.navigate('Contestation', { 
                   reviewId: review.id,
+                  review: review,
                   onSubmit: () => {
-                    if (route.params?.onContest) route.params.onContest(review.id);
+                    if (route.params?.onContest) route.params.onContest(review.id, review);
                     navigation.goBack();
                   }
                 });
@@ -290,58 +316,24 @@ export default function DetailsAvis({ route, navigation }) {
             </TouchableOpacity>
           </View>
         ) : (
-          // Modification actions if already validated or contested
           <View style={styles.actionContainer}>
-            {review?.status === 'validated' ? (
-              <TouchableOpacity 
-                style={[styles.actionContest, { flex: 1 }]}
-                onPress={() => {
-                  navigation.navigate('Contestation', { 
-                    reviewId: review.id,
-                    onSubmit: () => {
-                      if (route.params?.onContest) route.params.onContest(review.id);
-                      navigation.goBack();
-                    }
-                  });
-                }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="alert-circle-outline" size={18} color="#182C2A" />
-                <Text style={styles.actionContestText}>Contester l'Avis</Text>
-              </TouchableOpacity>
-            ) : (
-              // If already contested, show BOTH "Valider l'Avis" (transform contestation into validation) and "Modifier" (modify the dispute)
-              <View style={{ flexDirection: 'row', gap: 12, flex: 1 }}>
-                <TouchableOpacity 
-                  style={[styles.actionValidate, { flex: 1.4, backgroundColor: '#0F322B' }]}
-                  onPress={() => {
-                    if (route.params?.onValidate) route.params.onValidate(review.id);
+            <TouchableOpacity 
+              style={[styles.actionContest, { flex: 1, backgroundColor: '#FFF1F2', borderColor: '#FAD4D4' }]}
+              onPress={() => {
+                navigation.navigate('Contestation', { 
+                  reviewId: review.id,
+                  review: review,
+                  onSubmit: () => {
+                    if (route.params?.onContest) route.params.onContest(review.id, review);
                     navigation.goBack();
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
-                  <Text style={styles.actionValidateText}>Valider l'Avis</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.actionContest, { flex: 1 }]}
-                  onPress={() => {
-                    navigation.navigate('Contestation', { 
-                      reviewId: review.id,
-                      onSubmit: () => {
-                        if (route.params?.onContest) route.params.onContest(review.id);
-                        navigation.goBack();
-                      }
-                    });
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="create-outline" size={18} color="#182C2A" />
-                  <Text style={styles.actionContestText}>Modifier</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+                  }
+                });
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="create-outline" size={18} color="#F25C69" />
+              <Text style={[styles.actionContestText, { color: '#F25C69' }]}>Modifier ma contestation</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -616,6 +608,7 @@ const styles = StyleSheet.create({
   },
   piecesRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
     marginTop: 4,
   },

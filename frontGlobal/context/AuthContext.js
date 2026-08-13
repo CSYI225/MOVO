@@ -1,4 +1,18 @@
 import React, { createContext, useContext, useState } from 'react';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+
+const getApiUrl = () => {
+  if (Platform.OS === 'web') return 'http://localhost:5000/api';
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri) {
+    const ip = hostUri.split(':')[0];
+    return `http://${ip}:5000/api`;
+  }
+  return Platform.OS === 'android' ? 'http://10.0.2.2:5000/api' : 'http://localhost:5000/api';
+};
+
+const API_URL = getApiUrl();
 
 const AuthContext = createContext(null);
 
@@ -6,18 +20,67 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
   // ── Connexion ───────────────────────────────────────────
-  const login = (role, name, email) => {
-    setUser({
-      isLoggedIn: true,
-      role,          // 'visitor' | 'bailleur'
-      name,
-      email,
-      accessCredits: 0,   // crédits ponctuel actuels
-      totalPurchasedCredits: 0, // historique total pour les stats (dénominateur)
-      unlockedProfiles: [], // IDs des profils débloqués
-      subscription: null,  // { plan: 'week'|'month'|'year', startDate, expiresAt }
-      invoices: [],        // historique des reçus de paiement
-    });
+  const login = async (uiRole, identifiant, motDePasse) => {
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifiant, motDePasse }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Erreur lors de la connexion.');
+      }
+      const roleMapped = uiRole || (data.utilisateur.roles.includes('BAILLEUR') ? 'bailleur' : 'visitor');
+      setUser({
+        isLoggedIn: true,
+        id: data.utilisateur.id,
+        role: roleMapped,
+        name: `${data.utilisateur.prenom || ''} ${data.utilisateur.nom || ''}`.trim() || data.utilisateur.email,
+        email: data.utilisateur.email,
+        token: data.token,
+        accessCredits: 0,
+        totalPurchasedCredits: 0,
+        unlockedProfiles: [],
+        subscription: null,
+        invoices: [],
+      });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
+  // ── Inscription ──────────────────────────────────────────
+  const register = async (uiRole, prenom, nom, email, motDePasse) => {
+    try {
+      const roleCode = uiRole === 'landlord' || uiRole === 'bailleur' ? 'BAILLEUR' : 'VISITEUR';
+      const response = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prenom, nom, email, motDePasse, roleCode }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Erreur lors de l'inscription.");
+      }
+      setUser({
+        isLoggedIn: true,
+        id: data.utilisateur.id,
+        role: uiRole || 'visitor',
+        name: `${data.utilisateur.prenom || ''} ${data.utilisateur.nom || ''}`.trim() || data.utilisateur.email,
+        email: data.utilisateur.email,
+        token: data.token,
+        accessCredits: 0,
+        totalPurchasedCredits: 0,
+        unlockedProfiles: [],
+        subscription: null,
+        invoices: [],
+      });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   };
 
   // ── Déconnexion ─────────────────────────────────────────
@@ -148,6 +211,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       user,
       login,
+      register,
       logout,
       purchaseAccess,
       consumeCredit,

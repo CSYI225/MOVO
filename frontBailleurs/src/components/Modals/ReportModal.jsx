@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   X, Star, CheckCircle, FileText, 
   Image as ImageIcon, Plus, Trash2, 
@@ -9,11 +9,11 @@ import './ReportModal.css';
 
 const ReportModal = ({ isOpen, onClose, tenant, tenantName, tenantEmail, tenantPhone, propertyName, propertyType, propertyPrice, onSave, onSubmit, reportToEdit }) => {
   const [rating, setRating] = useState(0);
-  // Default to the tenant's current status, or 'Non-vérifié'
   const [relation, setRelation] = useState(tenant?.status || 'Non-vérifié');
   const [regularity, setRegularity] = useState('Toujours à temps');
   const [comment, setComment] = useState('');
   const [attachments, setAttachments] = useState([]);
+  const fileInputRef = useRef(null);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -21,7 +21,7 @@ const ReportModal = ({ isOpen, onClose, tenant, tenantName, tenantEmail, tenantP
         setRating(reportToEdit.rating || 0);
         setRelation(reportToEdit.relation || tenant?.status || 'Non-vérifié');
         setRegularity(reportToEdit.regularity || 'Toujours à temps');
-        setComment(reportToEdit.comment || '');
+        setComment(reportToEdit.comment || reportToEdit.text || '');
         setAttachments(reportToEdit.attachments || []);
       } else {
         setRating(0);
@@ -35,9 +35,26 @@ const ReportModal = ({ isOpen, onClose, tenant, tenantName, tenantEmail, tenantP
 
   if (!isOpen) return null;
 
-  const handleAddAttachment = () => {
-    const newId = Date.now();
-    setAttachments([...attachments, { id: newId, name: `Fichier_${attachments.length + 1}.jpg`, type: 'image' }]);
+  const handleTriggerFileSelect = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const newAttachments = files.map(file => ({
+      id: Date.now() + Math.random(),
+      name: file.name,
+      type: file.type.includes('pdf') ? 'pdf' : 'image',
+      url: URL.createObjectURL(file),
+      file: file,
+    }));
+
+    setAttachments(prev => [...prev, ...newAttachments]);
+    e.target.value = null; // Reset input
   };
 
   const handleDeleteAttachment = (id) => {
@@ -60,34 +77,52 @@ const ReportModal = ({ isOpen, onClose, tenant, tenantName, tenantEmail, tenantP
     <div className="modal-overlay">
       <div className="modal-content report-modal-v2-form">
         <div className="modal-header">
-          <h2>Nouvelle évaluation du locataire</h2>
+          <h2>{reportToEdit ? 'Modifier l\'évaluation du locataire' : 'Nouvelle évaluation du locataire'}</h2>
           <button className="btn-close" onClick={onClose}><X size={20} /></button>
         </div>
 
         <div className="report-modal-body-v2">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            multiple 
+            onChange={handleFileChange} 
+            accept="image/*,application/pdf" 
+            style={{ display: 'none' }} 
+          />
+
           <form onSubmit={(e) => { 
             e.preventDefault(); 
               const tName = tenant?.name || tenantName;
+              const tId = tenant?.id;
               if (reportToEdit) {
-                // Edit existing
-                reportToEdit.rating = rating;
-                reportToEdit.relation = relation;
-                reportToEdit.regularity = regularity;
-                reportToEdit.comment = comment;
-                reportToEdit.attachments = attachments;
+                // Edit existing report
+                const updatedReport = {
+                  ...reportToEdit,
+                  tenantId: tId || reportToEdit.tenantId,
+                  tenantName: tName,
+                  rating,
+                  relation,
+                  regularity,
+                  comment,
+                  text: comment,
+                  attachments,
+                };
                 if (onSubmit) {
-                  onSubmit(reportToEdit);
+                  onSubmit(updatedReport);
                 }
               } else {
-                // Create new
+                // Create new report
                 const newReport = {
                   id: Date.now(),
+                  tenantId: tId,
                   tenantName: tName,
                   date: new Date().toLocaleDateString('fr-FR'),
                   type: 'Général',
                   status: 'Validé',
                   rating,
                   comment,
+                  text: comment,
                   relation,
                   regularity,
                   author: 'Coulibaly Sékou',
@@ -95,6 +130,7 @@ const ReportModal = ({ isOpen, onClose, tenant, tenantName, tenantEmail, tenantP
                   propertyType: propertyType || null,
                   price: propertyPrice || null,
                   location: null,
+                  attachments,
                 };
                 if (onSubmit) {
                   onSubmit(newReport);
@@ -138,7 +174,7 @@ const ReportModal = ({ isOpen, onClose, tenant, tenantName, tenantEmail, tenantP
                 {rating > 0 ? `${rating} sur 5 - ${rating >= 4 ? 'Excellent' : rating >= 3 ? 'Assez bien' : 'Moyen'}` : 'Veuillez sélectionner une note'}
             </div>
 
-            {/* Relation Section - Read Only as it is automatic */}
+            {/* Relation Section */}
             <div className="section-label-v2">Relation locataire-bailleur (Automatique)</div>
             <div className="chips-row-v2">
                {['Vérifié', 'Non-vérifié', 'Refusé'].map(value => (
@@ -181,29 +217,31 @@ const ReportModal = ({ isOpen, onClose, tenant, tenantName, tenantEmail, tenantP
             </div>
 
             {/* Attachments Section */}
-            <div className="section-label-v2">Pièces Jointes - Preuves</div>
+            <div className="section-label-v2">Pièces Jointes - Preuves (Depuis votre appareil)</div>
             <div className="proofs-grid-v2">
                {attachments.map(file => (
                  <div key={file.id} className="proof-item-v2">
                     <div className="proof-icon-v2">
                         {file.type === 'pdf' ? <FileText size={24} color="#94a3b8" /> : <ImageIcon size={24} color="#94a3b8" />}
                     </div>
-                    <span>{file.name}</span>
+                    <span title={file.name} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80px' }}>
+                      {file.name}
+                    </span>
                     <button type="button" className="btn-delete-proof" onClick={() => handleDeleteAttachment(file.id)}>
                       <Trash2 size={14} />
                     </button>
                  </div>
                ))}
-               <div className="proof-item-v2 add-proof" onClick={handleAddAttachment}>
+               <div className="proof-item-v2 add-proof" onClick={handleTriggerFileSelect}>
                   <div className="proof-icon-v2"><Plus size={24} color="#0F322B" /></div>
-                  <span>Ajouter un fichier</span>
+                  <span>Sélectionner un fichier</span>
                </div>
             </div>
 
             <div className="form-footer-v2">
               <button type="button" className="btn-cancel-v2" onClick={onClose}>Annuler</button>
               <button type="submit" className="btn-submit-v2" disabled={!rating || !comment}>
-                {reportToEdit ? 'Mettre à jour et libérer' : 'Publier le rapport'}
+                {reportToEdit ? 'Enregistrer les modifications' : 'Publier le rapport'}
               </button>
             </div>
           </form>
