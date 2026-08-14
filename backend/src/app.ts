@@ -12,6 +12,8 @@ import locataireRoutes from './routes/locataireRoutes';
 import bienRoutes from './routes/bienRoutes';
 import avisRoutes from './routes/avisRoutes';
 import bailRoutes from './routes/bailRoutes';
+import publicRoutes from './routes/publicRoutes';
+import adminRoutes from './routes/adminRoutes';
 
 // Middleware
 app.use(cors());
@@ -39,5 +41,11 @@ app.use('/api/avis', avisRoutes);
 
 // Baux et Demandes de liaison routes
 app.use('/api/baux', bailRoutes);
+
+// Routes publiques (frontGlobal — sans authentification requise)
+app.use('/api/public', publicRoutes);
+
+// Routes d'administration
+app.use('/api/admin', adminRoutes);
 
 export default app;

@@ -1,53 +1,55 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image, StatusBar, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, globalStyles, fs } from '../Styles/global';
 import UserAvatar from '../components/UserAvatar';
 import RatingStars from '../components/RatingStars';
 
 export default function DetailsAvis({ route, navigation }) {
-  const { review, user } = route.params || {};
+  const { review, user, avisComplet } = route.params || {};
 
   // States pour les onglets
   const [infoTab, setInfoTab] = useState('Bien'); // 'Propriétaire' | 'Bien'
   const [mainTab, setMainTab] = useState('Avis'); // 'Avis' | 'Contestation'
 
-  // Dummy data pour la contestation
-  const hasContestation = true;
+  // Contestation depuis l'API ou le fallback
+  const contestationData = avisComplet?.contestation;
+  const hasContestation = avisComplet?.dejaConteste || !!contestationData || review?.status === 'contested';
+
+  // Données du bien
+  const bienData = avisComplet?.bien;
+  const typeBien = bienData?.type || 'Logement';
+  const locationBien = bienData?.location || review?.location || 'Côte d\'Ivoire';
+
+  // Note et avis
+  const noteValue = avisComplet?.note || review?.rating || 5;
+  const commentValue = avisComplet?.commentaire || review?.text || "Aucun commentaire.";
+  const regulariteValue = avisComplet?.regularitePaiement || review?.regularity || 'Toujours à temps';
+  const piecesJointes = avisComplet?.piecesJointes || [];
+
+  const handleOpenDoc = (url) => {
+    if (url) Linking.openURL(url).catch(() => {});
+  };
 
   const renderInfoBien = () => (
     <View style={styles.infoBienContent}>
       <View style={styles.infoItem}>
         <Ionicons name="home-outline" size={18} color="#182C2A" />
-        <Text style={styles.infoText}>Duplex</Text>
+        <Text style={styles.infoText}>{typeBien}</Text>
       </View>
       <View style={styles.infoItem}>
         <Ionicons name="location-outline" size={18} color="#182C2A" />
-        <Text style={styles.infoText}>{review?.location || 'Abidjan, Cocody'}</Text>
-      </View>
-      <View style={styles.infoItem}>
-        <Ionicons name="cash-outline" size={18} color="#182C2A" />
-        <Text style={styles.infoText}>15 000 000 FCFA</Text>
+        <Text style={styles.infoText}>{locationBien}</Text>
       </View>
     </View>
   );
 
   const renderInfoProprio = () => (
     <View style={styles.infoProprioContent}>
-      <UserAvatar initials="B" size={40} color="#E8F5E9" textColor="#4CAF50" />
+      <UserAvatar initials={avisComplet?.bailleur?.initials || 'B'} size={40} color="#E8F5E9" textColor="#4CAF50" />
       <View style={styles.proprioDetails}>
-        <Text style={styles.proprioName}>Bailleur Anonyme</Text>
-        <RatingStars rating={4.7} />
-      </View>
-      <View style={styles.proprioContact}>
-        <View style={styles.contactItem}>
-          <Ionicons name="call-outline" size={12} color="#556A68" />
-          <Text style={styles.contactText}>01 02 03 04 05</Text>
-        </View>
-        <View style={styles.contactItem}>
-          <Ionicons name="mail-outline" size={12} color="#556A68" />
-          <Text style={styles.contactText}>bailleur@gmail.com</Text>
-        </View>
+        <Text style={styles.proprioName}>Bailleur MOVO (Anonyme)</Text>
+        <RatingStars rating={5.0} />
       </View>
     </View>
   );
@@ -59,8 +61,8 @@ export default function DetailsAvis({ route, navigation }) {
       <View style={styles.whiteBox}>
         <UserAvatar initials={user?.initials || 'CS'} size={40} color="#C9E84F" textColor="#182C2A" photo={user?.avatar} />
         <View style={styles.locataireInfo}>
-          <Text style={styles.locataireName}>{user?.name || 'Coulibaly Sékou'}</Text>
-          <RatingStars rating={user?.rating || 4.7} />
+          <Text style={styles.locataireName}>{user?.name || 'Locataire'}</Text>
+          <RatingStars rating={user?.rating || 5.0} />
         </View>
       </View>
 
@@ -68,7 +70,7 @@ export default function DetailsAvis({ route, navigation }) {
       <View style={styles.noteContainer}>
         <View style={styles.squaresRow}>
           {[1, 2, 3, 4, 5].map((starIndex) => {
-            const isFilled = starIndex <= (review?.rating || 3);
+            const isFilled = starIndex <= noteValue;
             return (
               <View
                 key={starIndex}
@@ -82,70 +84,57 @@ export default function DetailsAvis({ route, navigation }) {
             );
           })}
         </View>
-        <Text style={styles.noteText}>{review?.rating || 3} sur 5 - Assez bien</Text>
+        <Text style={styles.noteText}>{noteValue} sur 5</Text>
       </View>
 
       <Text style={styles.sectionTitle}>Relation locataire-bailleur</Text>
       <View style={styles.badgesRow}>
-        {/* Badge 1: Vérifiée */}
-        <View style={[
-          styles.badge, 
-          (review?.relation === 'Vérifiée' || !review?.relation) ? styles.badgeActive : styles.badgeInactive
-        ]}>
-          {(review?.relation === 'Vérifiée' || !review?.relation) && <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />}
-          <Text style={(review?.relation === 'Vérifiée' || !review?.relation) ? styles.badgeTextActive : styles.badgeTextInactive}>Vérifiée</Text>
-        </View>
-
-        {/* Badge 2: Non vérifiée */}
-        <View style={[
-          styles.badge, 
-          review?.relation === 'Non vérifiée' ? { backgroundColor: '#FF9800', borderColor: '#FF9800', flexDirection: 'row', alignItems: 'center' } : styles.badgeInactive
-        ]}>
-          {review?.relation === 'Non vérifiée' && <Ionicons name="alert-circle" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />}
-          <Text style={review?.relation === 'Non vérifiée' ? [styles.badgeTextActive, { color: '#FFFFFF' }] : styles.badgeTextInactive}>Non vérifiée</Text>
-        </View>
-
-        {/* Badge 3: Refusée */}
-        <View style={[
-          styles.badge, 
-          review?.relation === 'Refusée' ? { backgroundColor: '#F25C69', borderColor: '#F25C69', flexDirection: 'row', alignItems: 'center' } : styles.badgeInactive
-        ]}>
-          {review?.relation === 'Refusée' && <Ionicons name="close-circle" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />}
-          <Text style={review?.relation === 'Refusée' ? [styles.badgeTextActive, { color: '#FFFFFF' }] : styles.badgeTextInactive}>Refusée</Text>
+        <View style={[styles.badge, styles.badgeActive]}>
+          <Ionicons name="checkmark" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
+          <Text style={styles.badgeTextActive}>Vérifiée</Text>
         </View>
       </View>
 
       <Text style={styles.sectionTitle}>Commentaire</Text>
       <View style={styles.whiteBox}>
-        <Text style={styles.commentText}>
-          {review?.text || "Bon locataire, il paye toujours son loyer à temps et ses voisins ne se sont jamais plaints de lui."}
-        </Text>
+        <Text style={styles.commentText}>{commentValue}</Text>
       </View>
 
       <Text style={styles.sectionTitle}>Régularité dans le paiement</Text>
       <View style={styles.badgesRow}>
-        <View style={[styles.badge, styles.badgeActive]}>
-          <Text style={styles.badgeTextActive}>Toujours à temps</Text>
-        </View>
-        <View style={[styles.badge, styles.badgeInactive]}>
-          <Text style={styles.badgeTextInactive}>Peu de Retard</Text>
-        </View>
-        <View style={[styles.badge, styles.badgeInactive]}>
-          <Text style={styles.badgeTextInactive}>Pas régulier</Text>
-        </View>
+        {['Toujours à temps', 'Peu de retard', 'Pas régulier'].map((regOption) => {
+          const isSelected = regulariteValue === regOption;
+          return (
+            <View
+              key={regOption}
+              style={[
+                styles.badge,
+                isSelected ? styles.badgeActive : styles.badgeInactive
+              ]}
+            >
+              <Text style={isSelected ? styles.badgeTextActive : styles.badgeTextInactive}>
+                {regOption}
+              </Text>
+            </View>
+          );
+        })}
       </View>
 
       <Text style={styles.sectionTitle}>Pièces Jointes - Preuves</Text>
-      <View style={styles.piecesRow}>
-        <View style={styles.pieceCard}>
-          <Ionicons name="document-text" size={32} color="#84B889" />
-          <Text style={styles.pieceText}>Quittance.pdf</Text>
+      {piecesJointes.length > 0 ? (
+        <View style={styles.piecesRow}>
+          {piecesJointes.map((p) => (
+            <TouchableOpacity key={p.id} style={styles.pieceCard} onPress={() => handleOpenDoc(p.url)}>
+              <Ionicons name="document-text" size={32} color="#84B889" />
+              <Text style={styles.pieceText} numberOfLines={1}>{p.nom || 'Document'}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
-        <View style={styles.pieceCard}>
-          <Ionicons name="image" size={32} color="#84B889" />
-          <Text style={styles.pieceText}>Recu_bancaire.png</Text>
+      ) : (
+        <View style={styles.whiteBox}>
+          <Text style={{ fontSize: fs(12), color: '#7A8B89' }}>Aucune pièce jointe jointe à cet avis.</Text>
         </View>
-      </View>
+      )}
     </View>
   );
 
@@ -161,21 +150,25 @@ export default function DetailsAvis({ route, navigation }) {
           <Text style={styles.sectionTitleRed}>Motifs de la contestation</Text>
           <View style={styles.whiteBox}>
             <Text style={styles.commentText}>
-              Le bailleur prétend qu'il y a eu des retards, mais j'ai toutes les preuves de virements bancaires effectués à temps le 1er de chaque mois.
+              {contestationData?.raison || "Cet avis a été contesté par le locataire."}
             </Text>
           </View>
 
-          <Text style={styles.sectionTitleRed}>Pièces Jointes - Preuves</Text>
-          <View style={styles.piecesRow}>
-            <View style={styles.pieceCard}>
-              <Ionicons name="document-text" size={32} color="#F25C69" />
-              <Text style={styles.pieceText}>Relevé.pdf</Text>
+          <Text style={styles.sectionTitleRed}>Pièces Jointes - Preuves de contestation</Text>
+          {contestationData?.piecesJointes && contestationData.piecesJointes.length > 0 ? (
+            <View style={styles.piecesRow}>
+              {contestationData.piecesJointes.map((p) => (
+                <TouchableOpacity key={p.id} style={styles.pieceCard} onPress={() => handleOpenDoc(p.url)}>
+                  <Ionicons name="document-text" size={32} color="#F25C69" />
+                  <Text style={styles.pieceText} numberOfLines={1}>{p.nom || 'Preuve'}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            <View style={styles.pieceCard}>
-              <Ionicons name="image" size={32} color="#F25C69" />
-              <Text style={styles.pieceText}>Capture.png</Text>
+          ) : (
+            <View style={styles.whiteBox}>
+              <Text style={{ fontSize: fs(12), color: '#7A8B89' }}>Aucune pièce jointe à la contestation.</Text>
             </View>
-          </View>
+          )}
         </>
       )}
     </View>
@@ -184,8 +177,8 @@ export default function DetailsAvis({ route, navigation }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
-      {/* Header Block in pure flat white */}
+
+      {/* Header */}
       <View style={styles.headerBlock}>
         <View style={styles.header}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -193,13 +186,13 @@ export default function DetailsAvis({ route, navigation }) {
               <Ionicons name="arrow-back" size={24} color="#182C2A" />
             </TouchableOpacity>
             <View style={styles.logoContainerSmall}>
-              <Image 
-                source={require('../assets/images/logo.png')} 
-                style={{ width: 60, height: 25, resizeMode: 'contain' }} 
+              <Image
+                source={require('../assets/images/logo.png')}
+                style={{ width: 60, height: 25, resizeMode: 'contain' }}
               />
             </View>
           </View>
-          <Text style={styles.headerTitle}>Avis propriétaires</Text>
+          <Text style={styles.headerTitle}>Détails de l'avis</Text>
           <View style={{ width: 60 }} />
         </View>
       </View>
@@ -244,19 +237,18 @@ export default function DetailsAvis({ route, navigation }) {
               Avis
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[styles.mainTab, mainTab === 'Contestation' ? styles.mainTabContestationActive : styles.mainTabInactive]}
             onPress={() => setMainTab('Contestation')}
           >
-            <Ionicons name="warning-outline" size={15} color={mainTab === 'Contestation' ? '#FFFFFF' : '#F25C69'} style={{ marginRight: 6 }} />
-            <Text style={[styles.mainTabText, mainTab === 'Contestation' ? styles.mainTabTextActive : styles.mainTabTextInactive]}>
-              Contestation
+            <Text style={[styles.mainTabText, mainTab === 'Contestation' ? styles.mainTabContestationTextActive : styles.mainTabTextInactive]}>
+              Contestation {hasContestation ? '(1)' : '(0)'}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Main Content Card */}
+        {/* Content */}
         {mainTab === 'Avis' ? renderAvisContent() : renderContestationContent()}
 
       </ScrollView>
@@ -265,329 +257,88 @@ export default function DetailsAvis({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#FAFBFB',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingTop: 10,
-    paddingBottom: 40,
-  },
+  safeArea: { flex: 1, backgroundColor: '#FAFBFB' },
+  scrollContent: { padding: 16, paddingTop: 10, paddingBottom: 40 },
   headerBlock: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F2F4F4',
+    backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: '#F2F4F4',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    marginRight: 10,
-    padding: 4,
-  },
-  logoContainerSmall: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: fs(16),
-    fontWeight: '700',
-    color: '#182C2A',
-  },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  backButton: { marginRight: 12, padding: 4 },
+  logoContainerSmall: { justifyContent: 'center' },
+  headerTitle: { fontSize: fs(17), fontWeight: '700', color: '#182C2A' },
 
-  // Info Box
   infoBoxContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0', // Cleaner flat outline border
-    overflow: 'hidden',
-    marginBottom: 24,
+    backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1.5, borderColor: '#E2E8F0',
+    overflow: 'hidden', marginBottom: 20,
   },
-  infoBoxContent: {
-    padding: 16,
-    minHeight: 110,
-  },
-  infoBoxTitle: {
-    fontSize: fs(14),
-    fontWeight: '700',
-    color: '#F59A23',
-    marginBottom: 12,
-  },
-  infoBienContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  infoText: {
-    marginLeft: 6,
-    fontSize: fs(12),
-    color: '#182C2A',
-    fontWeight: '600',
-  },
-  infoProprioContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  proprioDetails: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  proprioName: {
-    fontWeight: '700',
-    color: '#182C2A',
-    fontSize: fs(14),
-    marginBottom: 2,
-  },
-  proprioContact: {
-    alignItems: 'flex-start',
-  },
-  contactItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  contactText: {
-    fontSize: fs(11),
-    marginLeft: 6,
-    color: '#556A68',
-  },
-  infoTabsRow: {
-    flexDirection: 'row',
-    height: 40,
-    borderTopWidth: 1,
-    borderTopColor: '#F5F5F5',
-  },
-  infoTab: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  infoTabActive: {
-    backgroundColor: '#E8F5E9',
-  },
-  infoTabInactive: {
-    backgroundColor: '#FFFFFF',
-  },
-  infoTabText: {
-    fontWeight: '700',
-    fontSize: fs(12),
-  },
-  infoTabTextActive: {
-    color: '#4CAF50',
-  },
-  infoTabTextInactive: {
-    color: '#7A8B89',
-  },
+  infoBoxContent: { padding: 16 },
+  infoBoxTitle: { fontSize: fs(15), fontWeight: '700', color: '#182C2A', marginBottom: 12 },
+  infoBienContent: { gap: 10 },
+  infoItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  infoText: { fontSize: fs(14), color: '#556A68' },
+  infoProprioContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  proprioDetails: { flex: 1 },
+  proprioName: { fontSize: fs(14), fontWeight: '700', color: '#182C2A', marginBottom: 4 },
 
-  // Main Tabs
-  mainTabsRow: {
-    flexDirection: 'row',
-    marginBottom: -1, // Overlap border
-    zIndex: 1,
-  },
-  mainTab: {
-    flexDirection: 'row',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    alignItems: 'center',
-    marginRight: 6,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    borderColor: '#EAEAEA',
-  },
-  mainTabAvisActive: {
-    backgroundColor: '#FFFFFF',
-    borderTopColor: '#4CAF50',
-    borderTopWidth: 3,
-  },
-  mainTabContestationActive: {
-    backgroundColor: '#FDF2F2',
-    borderColor: '#FAD4D4',
-    borderTopColor: '#F25C69',
-    borderTopWidth: 3,
-  },
-  mainTabInactive: {
-    backgroundColor: '#F2F4F4',
-    borderColor: '#EAEAEA',
-  },
-  mainTabText: {
-    fontWeight: '700',
-    fontSize: fs(12),
-  },
-  mainTabTextActive: {
-    color: '#182C2A',
-  },
-  mainTabTextInactive: {
-    color: '#7A8B89',
-  },
+  infoTabsRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#F2F4F4' },
+  infoTab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+  infoTabActive: { backgroundColor: '#E8F5E9' },
+  infoTabInactive: { backgroundColor: '#FFFFFF' },
+  infoTabText: { fontSize: fs(13), fontWeight: '600' },
+  infoTabTextActive: { color: '#4CAF50' },
+  infoTabTextInactive: { color: '#7A8B89' },
 
-  // Main Content Card
+  mainTabsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  mainTab: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1.5 },
+  mainTabAvisActive: { backgroundColor: '#E8F5E9', borderColor: '#4CAF50' },
+  mainTabContestationActive: { backgroundColor: '#FEE2E2', borderColor: '#F25C69' },
+  mainTabInactive: { backgroundColor: '#FFFFFF', borderColor: '#E2E8F0' },
+  mainTabText: { fontSize: fs(14), fontWeight: '700' },
+  mainTabTextActive: { color: '#4CAF50' },
+  mainTabContestationTextActive: { color: '#F25C69' },
+  mainTabTextInactive: { color: '#7A8B89' },
+
   mainCard: {
-    borderWidth: 1.5,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    borderTopRightRadius: 16,
-    padding: 20,
+    backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1.5,
+    borderColor: '#E2E8F0', padding: 20, gap: 14,
   },
-  mainCardAvis: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E2E8F0', // Cleaner flat outline border
-    borderTopWidth: 0,
-  },
-  mainCardContestation: {
-    backgroundColor: '#FDF2F2', // Soft pastel pink background
-    borderColor: '#FAD4D4',
-    borderLeftWidth: 6, // Premium left red border accent
-    borderLeftColor: '#F25C69',
-    borderTopWidth: 0,
-  },
-  sectionTitle: {
-    fontSize: fs(12),
-    fontWeight: '700',
-    color: '#182C2A',
-    marginBottom: 8,
-    marginTop: 16,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  sectionTitleRed: {
-    fontSize: fs(12),
-    fontWeight: '700',
-    color: '#F25C69',
-    marginBottom: 8,
-    marginTop: 16,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
+  mainCardAvis: {},
+  mainCardContestation: {},
+  sectionTitle: { fontSize: fs(13), fontWeight: '700', color: '#182C2A' },
+  sectionTitleRed: { fontSize: fs(13), fontWeight: '700', color: '#F25C69' },
   whiteBox: {
-    backgroundColor: '#FAFBFB', // Subtle contrast light background
-    borderRadius: 12,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+    backgroundColor: '#FAFBFB', borderRadius: 12, borderWidth: 1,
+    borderColor: '#E2E8F0', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12,
   },
-  locataireInfo: {
-    marginLeft: 12,
-  },
-  locataireName: {
-    fontWeight: '700',
-    color: '#F59A23',
-    fontSize: fs(15),
-    marginBottom: 4,
-  },
-  noteContainer: {
-    alignItems: 'flex-start',
-    marginBottom: 5,
-  },
-  squaresRow: {
-    flexDirection: 'row',
-    marginBottom: 6,
-  },
-  starSquare: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 6,
-  },
-  starSquareFilled: {
-    backgroundColor: '#4CAF50', // Emerald green squares
-  },
-  starSquareEmpty: {
-    backgroundColor: '#EAEAEA',
-  },
-  noteText: {
-    fontSize: fs(12),
-    color: '#556A68',
-    fontWeight: '600',
-  },
-  badgesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  badgeActive: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
-  },
-  badgeInactive: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#EAEAEA',
-  },
-  badgeTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: fs(11),
-    marginLeft: 4,
-  },
-  badgeTextInactive: {
-    color: '#7A8B89',
-    fontWeight: '700',
-    fontSize: fs(11),
-  },
-  commentText: {
-    fontSize: fs(13),
-    color: '#182C2A',
-    lineHeight: 20,
-  },
-  piecesRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 4,
-  },
-  pieceCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    width: 110,
-    height: 90,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 10,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0', // Cleaner flat outline border
-  },
-  pieceText: {
-    fontSize: fs(11),
-    fontWeight: '700',
-    color: '#182C2A',
-    textAlign: 'center',
-    marginTop: 6,
-  },
+  locataireInfo: { flex: 1 },
+  locataireName: { fontSize: fs(15), fontWeight: '700', color: '#F59A23', marginBottom: 4 },
+  noteContainer: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  squaresRow: { flexDirection: 'row', gap: 4 },
+  starSquare: { width: 28, height: 28, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
+  starSquareFilled: { backgroundColor: '#F5A623' },
+  starSquareEmpty: { backgroundColor: '#E2E8F0' },
+  noteText: { fontSize: fs(13), fontWeight: '700', color: '#182C2A' },
 
-  // Empty Contestation
-  emptyContestation: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
+  badgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  badge: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+    borderWidth: 1.5, flexDirection: 'row', alignItems: 'center',
   },
-  emptyContestationText: {
-    fontWeight: '700',
-    fontSize: fs(14),
-    color: '#7A8B89',
-    marginTop: 15,
+  badgeActive: { backgroundColor: '#4CAF50', borderColor: '#4CAF50' },
+  badgeInactive: { backgroundColor: '#FFFFFF', borderColor: '#E2E8F0' },
+  badgeTextActive: { color: '#FFFFFF', fontSize: fs(12), fontWeight: '700' },
+  badgeTextInactive: { color: '#7A8B89', fontSize: fs(12), fontWeight: '600' },
+
+  commentText: { fontSize: fs(13), color: '#4A5A58', lineHeight: 20 },
+
+  piecesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  pieceCard: {
+    backgroundColor: '#FAFBFB', borderRadius: 12, borderWidth: 1,
+    borderColor: '#E2E8F0', padding: 12, alignItems: 'center', width: 110, gap: 6,
   },
+  pieceText: { fontSize: fs(11), color: '#182C2A', fontWeight: '600', textAlign: 'center' },
+
+  emptyContestation: { padding: 40, alignItems: 'center', gap: 12 },
+  emptyContestationText: { fontSize: fs(14), fontWeight: '700', color: '#F25C69' },
 });

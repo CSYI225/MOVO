@@ -1,22 +1,24 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, Shield, ChevronLeft, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, Shield, ChevronLeft, CheckCircle2, Info } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './Auth.css';
 import LogoMovo from '../../Images/logo.png';
 
 const Auth = () => {
-  const { login, register } = useAuth();
-  const [view, setView] = useState('login'); // 'login' | 'register' | 'forgot'
+  const { login } = useAuth();
+  const [view, setView] = useState('login'); // 'login' | 'register' | 'forgot' | 'must_change_pwd'
 
   // Input states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [nom, setNom] = useState('');
-  const [prenom, setPrenom] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Forced password change states
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [changeSuccess, setChangeSuccess] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,20 +30,50 @@ const Auth = () => {
       setLoading(false);
       if (!res.success) {
         setErrorMessage(res.error);
+      } else if (res.mustChangePassword) {
+        setView('must_change_pwd');
       }
-    } else if (view === 'register') {
-      if (password !== confirmPassword) {
-        setErrorMessage('Les mots de passe ne correspondent pas.');
-        return;
-      }
-      setLoading(true);
-      const res = await register(prenom, nom, email, password);
-      setLoading(false);
-      if (!res.success) {
-        setErrorMessage(res.error);
-      }
-    } else {
+    } else if (view === 'forgot') {
       setForgotSent(true);
+    }
+  };
+
+  const handleChangePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMessage('');
+
+    if (newPassword.length < 6) {
+      setErrorMessage('Le nouveau mot de passe doit contenir au moins 6 caractères.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setErrorMessage('Les mots de passe ne correspondent pas.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('movo_bailleur_token');
+      const response = await fetch('http://localhost:5000/api/locataires/changer-mot-de-passe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ nouveauMotDePasse: newPassword }),
+      });
+      const data = await response.json();
+      setLoading(false);
+      if (!response.ok) {
+        throw new Error(data.message || 'Erreur lors du changement de mot de passe.');
+      }
+      setChangeSuccess(true);
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      setLoading(false);
+      setErrorMessage(err.message);
     }
   };
 
@@ -66,7 +98,7 @@ const Auth = () => {
             </div>
           )}
 
-          {view === 'forgot' && (
+          {(view === 'forgot' || view === 'register') && (
             <button className="auth-back-btn" onClick={() => { setView('login'); setForgotSent(false); }}>
               <ChevronLeft size={16} />
               <span>Retour à la connexion</span>
@@ -80,12 +112,12 @@ const Auth = () => {
               
               <form onSubmit={handleSubmit} className="auth-form">
                 <div className="auth-input-group">
-                  <label>Adresse e-mail</label>
+                  <label>Adresse e-mail ou téléphone</label>
                   <div className="auth-input-wrapper">
                     <Mail size={18} className="auth-icon" />
                     <input 
-                      type="email" 
-                      placeholder="nom@exemple.com" 
+                      type="text" 
+                      placeholder="nom@exemple.com ou 0708091011" 
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required 
@@ -112,102 +144,105 @@ const Auth = () => {
                   </div>
                 </div>
 
-                <button type="submit" className="auth-submit-btn">
-                  Se connecter
+                <button type="submit" className="auth-submit-btn" disabled={loading}>
+                  {loading ? 'Connexion en cours...' : 'Se connecter'}
                 </button>
               </form>
 
               <div className="auth-switch-text">
-                Pas encore inscrit ?{' '}
-                <button onClick={() => setView('register')}>Créer un compte</button>
+                Nouveau bailleur ?{' '}
+                <button onClick={() => setView('register')}>Obtenir un compte</button>
               </div>
+            </>
+          )}
+
+          {view === 'must_change_pwd' && (
+            <>
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <Shield size={40} color="#F59A23" style={{ marginBottom: '8px' }} />
+                <h3>Changement de mot de passe obligatoire</h3>
+                <p className="auth-subtitle">
+                  C'est votre première connexion avec vos accès temporaires. Veuillez définir votre mot de passe personnel.
+                </p>
+              </div>
+
+              {changeSuccess ? (
+                <div className="auth-success-state" style={{ textAlign: 'center' }}>
+                  <CheckCircle2 size={48} className="success-icon" color="#10B981" />
+                  <h4>Mot de passe mis à jour !</h4>
+                  <p>Chargement de votre espace de gestion...</p>
+                </div>
+              ) : (
+                <form onSubmit={handleChangePasswordSubmit} className="auth-form">
+                  <div className="auth-input-group">
+                    <label>Nouveau mot de passe</label>
+                    <div className="auth-input-wrapper">
+                      <Lock size={18} className="auth-icon" />
+                      <input 
+                        type="password" 
+                        placeholder="Au moins 6 caractères" 
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="auth-input-group">
+                    <label>Confirmer le nouveau mot de passe</label>
+                    <div className="auth-input-wrapper">
+                      <Shield size={18} className="auth-icon" />
+                      <input 
+                        type="password" 
+                        placeholder="Confirmez votre nouveau mot de passe" 
+                        value={confirmNewPassword}
+                        onChange={(e) => setConfirmNewPassword(e.target.value)}
+                        required 
+                      />
+                    </div>
+                  </div>
+
+                  <button type="submit" className="auth-submit-btn" disabled={loading}>
+                    {loading ? 'Enregistrement...' : 'Valider et accéder à mon espace'}
+                  </button>
+                </form>
+              )}
             </>
           )}
 
           {view === 'register' && (
             <>
-              <h3>Créer un compte</h3>
-              <p className="auth-subtitle">Rejoignez la plateforme Movo Bailleurs</p>
-              
-              <form onSubmit={handleSubmit} className="auth-form">
-                <div className="auth-row-inputs">
-                  <div className="auth-input-group">
-                    <label>Nom</label>
-                    <div className="auth-input-wrapper">
-                      <input 
-                        type="text" 
-                        placeholder="Dupont" 
-                        value={nom}
-                        onChange={(e) => setNom(e.target.value)}
-                        required 
-                      />
-                    </div>
-                  </div>
-                  <div className="auth-input-group">
-                    <label>Prénom</label>
-                    <div className="auth-input-wrapper">
-                      <input 
-                        type="text" 
-                        placeholder="Jean" 
-                        value={prenom}
-                        onChange={(e) => setPrenom(e.target.value)}
-                        required 
-                      />
-                    </div>
-                  </div>
+              <h3>Création de compte Bailleur</h3>
+              <p className="auth-subtitle">Information importante</p>
+
+              <div style={{
+                backgroundColor: '#EFF6FF',
+                border: '1.5px solid #BFDBFE',
+                borderRadius: '12px',
+                padding: '20px',
+                marginTop: '10px',
+                marginBottom: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Info size={24} color="#1D4ED8" />
+                  <span style={{ fontWeight: '700', fontSize: '15px', color: '#1E40AF' }}>
+                    Compte géré par l'Administration MOVO
+                  </span>
                 </div>
-
-                <div className="auth-input-group">
-                  <label>Adresse e-mail</label>
-                  <div className="auth-input-wrapper">
-                    <Mail size={18} className="auth-icon" />
-                    <input 
-                      type="email" 
-                      placeholder="jean.dupont@exemple.com" 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required 
-                    />
-                  </div>
-                </div>
-
-                <div className="auth-input-group">
-                  <label>Mot de passe</label>
-                  <div className="auth-input-wrapper">
-                    <Lock size={18} className="auth-icon" />
-                    <input 
-                      type="password" 
-                      placeholder="Minimum 8 caractères" 
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required 
-                    />
-                  </div>
-                </div>
-
-                <div className="auth-input-group">
-                  <label>Confirmer le mot de passe</label>
-                  <div className="auth-input-wrapper">
-                    <Shield size={18} className="auth-icon" />
-                    <input 
-                      type="password" 
-                      placeholder="Confirmez votre mot de passe" 
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required 
-                    />
-                  </div>
-                </div>
-
-                <button type="submit" className="auth-submit-btn">
-                  Créer mon compte
-                </button>
-              </form>
-
-              <div className="auth-switch-text">
-                Déjà inscrit ?{' '}
-                <button onClick={() => setView('login')}>Se connecter</button>
+                <p style={{ fontSize: '13px', color: '#1E3A8A', lineHeight: '20px', margin: 0 }}>
+                  Les comptes Bailleurs sont désormais créés exclusivement par l'Administrateur MOVO pour garantir la sécurité et la vérification des bailleurs de la plateforme.
+                </p>
+                <p style={{ fontSize: '13px', color: '#1E3A8A', lineHeight: '20px', margin: 0 }}>
+                  Si vous n'avez pas encore vos identifiants temporaires, veuillez contacter le service d'administration à : <strong>admin@movo.ci</strong>.
+                </p>
               </div>
+
+              <button className="auth-submit-btn" onClick={() => setView('login')}>
+                J'ai mes accès temporaires — Se connecter
+              </button>
             </>
           )}
 

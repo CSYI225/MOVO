@@ -21,7 +21,6 @@ model Utilisateur {
   misAJourLe               DateTime                @updatedAt @map("mis_a_jour_le") @db.Timestamp(6)
   abonnements              Abonnement[]
   avisRediges              Avis[]                  @relation("AvisAuteur")
-  avisModeres              Avis[]                  @relation("AvisModerateur")
   avisRecus                Avis[]                  @relation("AvisSujet")
   bauxBailleur             Bail[]                  @relation("BailBailleur")
   bauxLocataire            Bail[]                  @relation("BailLocataire")
@@ -35,9 +34,6 @@ model Utilisateur {
   documents                Document[]              @relation("DocumentProprietaire")
   documentsVerifies        Document[]              @relation("DocumentVerificateur")
   dossierLocataire         DossierLocataire?
-  evenementsSysteme        EvenementSysteme[]
-  historiqueAvis           HistoriqueAvis[]
-  historiquesCredibilite   HistoriqueCredibilite[]
   membresAgence            MembreAgence[]
   notifications            Notification[]
   paiements                Paiement[]
@@ -60,8 +56,6 @@ model RefreshToken {
   id            String      @id @default(uuid()) @db.Uuid
   utilisateurId String      @map("utilisateur_id") @db.Uuid
   tokenHash     String      @unique @map("token_hash")
-  infoAppareil  String?     @map("info_appareil")
-  adresseIp     String?     @map("adresse_ip") @db.Inet
   expireLe      DateTime    @map("expire_le") @db.Timestamp(6)
   revoqueLe     DateTime?   @map("revoque_le") @db.Timestamp(6)
   creeLe        DateTime    @default(now()) @map("cree_le") @db.Timestamp(6)
@@ -88,7 +82,6 @@ model Role {
   code              String            @unique @db.VarChar(50)
   libelle           String            @db.VarChar(100)
   description       String?
-  rolesPermissions  RolePermission[]
   utilisateursRoles UtilisateurRole[]
 
   @@map("roles")
@@ -105,25 +98,6 @@ model UtilisateurRole {
 
   @@id([utilisateurId, roleId])
   @@map("utilisateurs_roles")
-}
-
-model Permission {
-  id               Int              @id @default(autoincrement()) @db.SmallInt
-  code             String           @unique @db.VarChar(100)
-  description      String?
-  rolesPermissions RolePermission[]
-
-  @@map("permissions")
-}
-
-model RolePermission {
-  roleId       Int        @map("role_id") @db.SmallInt
-  permissionId Int        @map("permission_id") @db.SmallInt
-  permission   Permission @relation(fields: [permissionId], references: [id])
-  role         Role       @relation(fields: [roleId], references: [id])
-
-  @@id([roleId, permissionId])
-  @@map("roles_permissions")
 }
 
 model Ville {
@@ -282,51 +256,28 @@ model DemandeLiaison {
 }
 
 model Avis {
-  id                       String            @id @default(uuid()) @db.Uuid
-  auteurUtilisateurId      String            @map("auteur_utilisateur_id") @db.Uuid
-  sujetUtilisateurId       String            @map("sujet_utilisateur_id") @db.Uuid
-  bailId                   String?           @map("bail_id") @db.Uuid
-  note                     Decimal           @db.Decimal(2, 1)
-  commentaire              String
-  regularitePaiement       String            @map("regularite_paiement") @db.VarChar(30)
-  typeAvis                 String            @map("type_avis") @db.VarChar(30)
-  statutModeration         String            @default("publie") @map("statut_moderation") @db.VarChar(30)
-  moderePar                String?           @map("modere_par") @db.Uuid
-  modereLe                 DateTime?         @map("modere_le") @db.Timestamp(6)
-  raisonModeration         String?           @map("raison_moderation")
-  credibiliteAuteurAEpoque Decimal           @map("credibilite_auteur_a_epoque") @db.Decimal(5, 2)
-  poids                    Decimal           @default(1.0) @db.Decimal(4, 3)
-  estSignaleAuto           Boolean           @default(false) @map("est_signale_auto")
-  supprimeLe               DateTime?         @map("supprime_le") @db.Timestamp(6)
-  publieLe                 DateTime          @default(now()) @map("publie_le") @db.Timestamp(6)
-  misAJourLe               DateTime          @updatedAt @map("mis_a_jour_le") @db.Timestamp(6)
-  auteur                   Utilisateur       @relation("AvisAuteur", fields: [auteurUtilisateurId], references: [id])
-  bail                     Bail?             @relation(fields: [bailId], references: [id])
-  moderateur               Utilisateur?      @relation("AvisModerateur", fields: [moderePar], references: [id])
-  sujet                    Utilisateur       @relation("AvisSujet", fields: [sujetUtilisateurId], references: [id])
-  contestations            Contestation[]
-  historique               HistoriqueAvis[]
-  piecesJointes            PieceJointeAvis[]
-  reponse                  ReponseAvis?
-  signalements             Signalement[]
+  id                  String            @id @default(uuid()) @db.Uuid
+  auteurUtilisateurId String            @map("auteur_utilisateur_id") @db.Uuid
+  sujetUtilisateurId  String            @map("sujet_utilisateur_id") @db.Uuid
+  bailId              String?           @map("bail_id") @db.Uuid
+  note                Decimal           @db.Decimal(2, 1)
+  commentaire         String
+  regularitePaiement  String            @map("regularite_paiement") @db.VarChar(30)
+  typeAvis            String            @map("type_avis") @db.VarChar(30)
+  estSignaleAuto      Boolean           @default(false) @map("est_signale_auto")
+  supprimeLe          DateTime?         @map("supprime_le") @db.Timestamp(6)
+  publieLe            DateTime          @default(now()) @map("publie_le") @db.Timestamp(6)
+  misAJourLe          DateTime          @updatedAt @map("mis_a_jour_le") @db.Timestamp(6)
+  auteur              Utilisateur       @relation("AvisAuteur", fields: [auteurUtilisateurId], references: [id])
+  bail                Bail?             @relation(fields: [bailId], references: [id])
+  sujet               Utilisateur       @relation("AvisSujet", fields: [sujetUtilisateurId], references: [id])
+  contestations       Contestation[]
+  piecesJointes       PieceJointeAvis[]
+  reponse             ReponseAvis?
+  signalements        Signalement[]
 
   @@unique([auteurUtilisateurId, bailId])
   @@map("avis")
-}
-
-model HistoriqueAvis {
-  id                           String      @id @default(uuid()) @db.Uuid
-  avisId                       String      @map("avis_id") @db.Uuid
-  notePrecedente               Decimal     @map("note_precedente") @db.Decimal(2, 1)
-  commentairePrecedent         String      @map("commentaire_precedent")
-  regularitePaiementPrecedente String      @map("regularite_paiement_precedente") @db.VarChar(30)
-  modifiePar                   String      @map("modifie_par") @db.Uuid
-  raisonModification           String?     @map("raison_modification")
-  modifieLe                    DateTime    @default(now()) @map("modifie_le") @db.Timestamp(6)
-  avis                         Avis        @relation(fields: [avisId], references: [id])
-  modificateur                 Utilisateur @relation(fields: [modifiePar], references: [id])
-
-  @@map("historique_avis")
 }
 
 model ReponseAvis {
@@ -425,20 +376,6 @@ model Signalement {
   @@map("signalements_abus")
 }
 
-model HistoriqueCredibilite {
-  id                   String      @id @default(uuid()) @db.Uuid
-  utilisateurId        String      @map("utilisateur_id") @db.Uuid
-  score                Decimal     @db.Decimal(5, 2)
-  typeScore            String      @map("type_score") @db.VarChar(20)
-  evenementDeclencheur String      @map("evenement_declencheur") @db.VarChar(100)
-  idRefDeclencheur     String?     @map("id_ref_declencheur") @db.Uuid
-  facteurs             Json
-  calculeLe            DateTime    @default(now()) @map("calcule_le") @db.Timestamp(6)
-  utilisateur          Utilisateur @relation(fields: [utilisateurId], references: [id])
-
-  @@map("historique_credibilite")
-}
-
 model Devise {
   code            String          @id @db.VarChar(10)
   libelle         String          @db.VarChar(50)
@@ -463,37 +400,16 @@ model FournisseurPaiement {
   @@map("fournisseurs_paiement")
 }
 
-model Fonctionnalite {
-  id                     Int                     @id @default(autoincrement()) @db.SmallInt
-  code                   String                  @unique @db.VarChar(100)
-  description            String?
-  fonctionnalitesForfait FonctionnaliteForfait[]
-
-  @@map("fonctionnalites")
-}
-
 model Forfait {
-  id                     Int                     @id @default(autoincrement()) @db.SmallInt
-  code                   String                  @unique @db.VarChar(50)
-  prixMensuel            Decimal                 @map("prix_mensuel") @db.Decimal(12, 2)
-  prixAnnuel             Decimal                 @map("prix_annuel") @db.Decimal(12, 2)
-  codeDevise             String                  @map("code_devise") @db.VarChar(10)
-  abonnements            Abonnement[]
-  fonctionnalitesForfait FonctionnaliteForfait[]
-  devise                 Devise                  @relation(fields: [codeDevise], references: [code])
+  id          Int          @id @default(autoincrement()) @db.SmallInt
+  code        String       @unique @db.VarChar(50)
+  prixMensuel Decimal      @map("prix_mensuel") @db.Decimal(12, 2)
+  prixAnnuel  Decimal      @map("prix_annuel") @db.Decimal(12, 2)
+  codeDevise  String       @map("code_devise") @db.VarChar(10)
+  abonnements Abonnement[]
+  devise      Devise       @relation(fields: [codeDevise], references: [code])
 
   @@map("forfaits")
-}
-
-model FonctionnaliteForfait {
-  forfaitId        Int            @map("forfait_id") @db.SmallInt
-  fonctionnaliteId Int            @map("fonctionnalite_id") @db.SmallInt
-  valeurLimite     Int?           @map("valeur_limite")
-  fonctionnalite   Fonctionnalite @relation(fields: [fonctionnaliteId], references: [id])
-  forfait          Forfait        @relation(fields: [forfaitId], references: [id])
-
-  @@id([forfaitId, fonctionnaliteId])
-  @@map("fonctionnalites_forfait")
 }
 
 model Abonnement {
@@ -562,19 +478,4 @@ model Notification {
   destinataire              Utilisateur @relation(fields: [destinataireUtilisateurId], references: [id])
 
   @@map("notifications")
-}
-
-model EvenementSysteme {
-  id                  String       @id @default(uuid()) @db.Uuid
-  typeEvenement       String       @map("type_evenement") @db.VarChar(100)
-  acteurUtilisateurId String?      @map("acteur_utilisateur_id") @db.Uuid
-  typeSujet           String       @map("type_sujet") @db.VarChar(50)
-  sujetId             String       @map("sujet_id") @db.Uuid
-  payload             Json
-  adresseIp           String?      @map("adresse_ip") @db.Inet
-  userAgent           String?      @map("user_agent")
-  survenuLe           DateTime     @default(now()) @map("survenu_le") @db.Timestamp(6)
-  acteur              Utilisateur? @relation(fields: [acteurUtilisateurId], references: [id])
-
-  @@map("evenements_systeme")
 }

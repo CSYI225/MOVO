@@ -205,7 +205,8 @@ export function AuthProvider({ children }) {
       localStorage.setItem('movo_bailleur_user', JSON.stringify(userData));
       localStorage.setItem('movo_bailleur_token', data.token);
       loadUserData(userData.id, data.token);
-      return { success: true };
+      const mustChangePassword = data.utilisateur.estReclame === false;
+      return { success: true, mustChangePassword, utilisateur: data.utilisateur };
     } catch (error) {
       return { success: false, error: error.message };
     }

@@ -92,8 +92,6 @@ export async function creerAvis(
           commentaire,
           regularitePaiement: regularite,
           typeAvis: typeAvis || 'locataire',
-          credibiliteAuteurAEpoque: 100.0,
-          poids: 1.0,
         },
         include: { auteur: { include: { profil: true } }, sujet: { include: { profil: true } } },
       });
@@ -149,7 +147,7 @@ export async function obtenirMesAvisLocataire(
     if (!locataireId) { res.status(401).json({ message: 'Non authentifié.' }); return; }
 
     const avis = await prisma.avis.findMany({
-      where: { sujetUtilisateurId: locataireId, supprimeLe: null, statutModeration: { not: 'supprime' } },
+      where: { sujetUtilisateurId: locataireId, supprimeLe: null },
       include: {
         auteur: { include: { profil: true } },
         piecesJointes: true,
@@ -192,7 +190,6 @@ export async function obtenirMesAvisLocataire(
         commentaire: a.commentaire,
         regularitePaiement: a.regularitePaiement,
         typeAvis: a.typeAvis,
-        statutModeration: a.statutModeration,
         publieLe: a.publieLe,
         dejaConteste,
         raisonContestation: contestationRecente?.raison || null,
@@ -272,7 +269,6 @@ export async function obtenirMesAvisBailleur(
         commentaire: a.commentaire,
         regularitePaiement: a.regularitePaiement,
         typeAvis: a.typeAvis,
-        statutModeration: a.statutModeration,
         publieLe: a.publieLe,
         tenantId: a.sujet.id,
         tenantName: `${a.sujet.profil?.prenom || ''} ${a.sujet.profil?.nom || ''}`.trim() || a.sujet.email,
